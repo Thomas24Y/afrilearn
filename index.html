@@ -1,28 +1,1656 @@
 <!DOCTYPE html>
 <html lang="fr">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-    <meta name="theme-color" content="#050709" />
-    <meta name="description" content="AfriLearn — L'écosystème numérique pour étudiants et entreprises d'Afrique francophone." />
-    <meta property="og:title" content="AfriLearn" />
-    <meta property="og:description" content="Apprends. Connecte-toi. Réussis." />
-    <meta property="og:type" content="website" />
-    <title>AfriLearn</title>
-    <style>
-      * { box-sizing: border-box; margin: 0; padding: 0; }
-      body {
-        background: #050709;
-        font-family: 'Georgia', serif;
-        -webkit-font-smoothing: antialiased;
-        -moz-osx-font-smoothing: grayscale;
-        overflow-x: hidden;
-      }
-      #root { min-height: 100vh; }
-    </style>
-  </head>
-  <body>
-    <noscript>Vous devez activer JavaScript pour utiliser AfriLearn.</noscript>
-    <div id="root"></div>
-  </body>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no" />
+  <meta name="theme-color" content="#050709" />
+  <meta name="description" content="AfriLearn — L'écosystème numérique pour étudiants et entreprises d'Afrique francophone." />
+  <title>AfriLearn 🎓</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #050709; font-family: Georgia, serif; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+    #root { min-height: 100vh; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+/* ─── DESIGN TOKENS ─────────────────────────────────────────── */
+const C = {
+  bg:       "#07090F",
+  surface:  "#0E1118",
+  card:     "#131720",
+  border:   "#1C2333",
+  accent:   "#F6A732",
+  accentDim:"#F6A73220",
+  green:    "#00C97A",
+  greenDim: "#00C97A20",
+  blue:     "#4F8EF7",
+  blueDim:  "#4F8EF720",
+  red:      "#F05C5C",
+  redDim:   "#F05C5C20",
+  purple:   "#9B72F8",
+  purpleDim:"#9B72F820",
+  text:     "#ECF0FA",
+  sub:      "#8896B3",
+  muted:    "#4A5568",
+};
+
+/* ─── TINY COMPONENTS ────────────────────────────────────────── */
+const Dot = ({ color = C.green, size = 7 }) => (
+  <span style={{ display:"inline-block", width:size, height:size, borderRadius:"50%", background:color, flexShrink:0 }} />
+);
+
+const Badge = ({ label, color = C.accent }) => (
+  <span style={{ background:`${color}22`, color, border:`1px solid ${color}44`, borderRadius:6, padding:"2px 8px", fontSize:10, fontWeight:700, letterSpacing:.5 }}>{label}</span>
+);
+
+const Pill = ({ label, active, onClick, color = C.accent }) => (
+  <button onClick={onClick} style={{ background: active ? color : C.card, color: active ? "#07090F" : C.sub, border:`1px solid ${active ? color : C.border}`, borderRadius:20, padding:"6px 14px", fontSize:12, cursor:"pointer", whiteSpace:"nowrap", fontWeight: active ? 700 : 400 }}>{label}</button>
+);
+
+const Avatar = ({ name="?", size=38, color=C.blue }) => (
+  <div style={{ width:size, height:size, borderRadius:size/3, background:`${color}33`, color, display:"flex", alignItems:"center", justifyContent:"center", fontWeight:900, fontSize:size*.38, flexShrink:0, border:`2px solid ${color}44` }}>
+    {name[0].toUpperCase()}
+  </div>
+);
+
+const Input = ({ label, placeholder, value, onChange, type="text", style:sx={} }) => (
+  <div style={{ marginBottom:14 }}>
+    {label && <label style={{ display:"block", color:C.sub, fontSize:11, letterSpacing:.8, marginBottom:6, textTransform:"uppercase" }}>{label}</label>}
+    <input type={type} placeholder={placeholder} value={value} onChange={onChange}
+      style={{ width:"100%", background:C.surface, border:`1px solid ${C.border}`, borderRadius:10, padding:"11px 14px", color:C.text, fontSize:14, outline:"none", boxSizing:"border-box", fontFamily:"inherit", ...sx }} />
+  </div>
+);
+
+const Btn = ({ children, onClick, variant="primary", disabled, full, style:sx={} }) => {
+  const base = { border:"none", borderRadius:11, padding:"12px 20px", fontWeight:700, fontSize:14, cursor: disabled?"not-allowed":"pointer", width: full?"100%":"auto", opacity: disabled?.6:1, transition:"all .15s", fontFamily:"inherit", ...sx };
+  const styles = {
+    primary: { background: C.accent, color:"#07090F" },
+    secondary: { background: C.card, color: C.sub, border:`1px solid ${C.border}` },
+    danger: { background: C.red, color:"#fff" },
+    ghost: { background:"transparent", color: C.sub, border:`1px solid ${C.border}` },
+  };
+  return <button onClick={!disabled?onClick:undefined} style={{...base,...styles[variant]}}>{children}</button>;
+};
+
+const UploadBox = ({ label, hint, icon="📎", onFile }) => {
+  const ref = useRef();
+  const [name, setName] = useState("");
+  return (
+    <div onClick={() => ref.current.click()} style={{ border:`2px dashed ${C.border}`, borderRadius:12, padding:"18px", textAlign:"center", cursor:"pointer", background:C.surface, marginBottom:12 }}>
+      <input ref={ref} type="file" style={{ display:"none" }} accept="image/*,.pdf" onChange={e=>{ if(e.target.files[0]){ setName(e.target.files[0].name); onFile&&onFile(e.target.files[0]); }}} />
+      <div style={{ fontSize:28, marginBottom:6 }}>{name ? "✅" : icon}</div>
+      <div style={{ color: name?C.green:C.text, fontSize:13, fontWeight:700 }}>{name || label}</div>
+      <div style={{ color:C.muted, fontSize:11, marginTop:3 }}>{name ? "Fichier sélectionné" : hint}</div>
+    </div>
+  );
+};
+
+/* ─── ONBOARDING ─────────────────────────────────────────────── */
+function Onboarding({ onDone }) {
+  const [step, setStep] = useState("splash");          // splash → type → form → verify → done
+  const [userType, setUserType] = useState(null);      // "student" | "company"
+  const [form, setForm] = useState({ name:"", email:"", password:"", field:"", university:"", companyName:"", sector:"", website:"" });
+  const [docs, setDocs] = useState({ id:null, selfie:null, kbis:null, logo:null });
+  const [agree, setAgree] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const set = (k,v) => setForm(f=>({...f,[k]:v}));
+
+  const submitVerify = () => {
+    setLoading(true);
+    setTimeout(() => { setLoading(false); setStep("done"); }, 2200);
+  };
+
+  /* Splash */
+  if(step==="splash") return (
+    <div style={{ minHeight:"100vh", background:C.bg, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:24, position:"relative", overflow:"hidden" }}>
+      <div style={{ position:"absolute", top:-80, right:-80, width:280, height:280, borderRadius:"50%", background:`radial-gradient(circle, ${C.accentDim}, transparent 70%)` }}/>
+      <div style={{ position:"absolute", bottom:-60, left:-60, width:200, height:200, borderRadius:"50%", background:`radial-gradient(circle, ${C.blueDim}, transparent 70%)` }}/>
+      <div style={{ position:"relative", zIndex:1, textAlign:"center", maxWidth:340 }}>
+        <div style={{ width:72, height:72, borderRadius:20, background:C.accent, display:"flex", alignItems:"center", justifyContent:"center", fontSize:36, margin:"0 auto 24px", boxShadow:`0 0 40px ${C.accentDim}` }}>🎓</div>
+        <h1 style={{ fontSize:38, fontWeight:900, color:C.text, letterSpacing:-1.5, marginBottom:8, lineHeight:1.1 }}>Afri<span style={{ color:C.accent }}>Learn</span></h1>
+        <p style={{ color:C.sub, fontSize:15, lineHeight:1.6, marginBottom:10 }}>L'écosystème numérique conçu pour les étudiants et entreprises d'Afrique francophone.</p>
+        <div style={{ display:"flex", justifyContent:"center", gap:16, marginBottom:36 }}>
+          {[["12k+","Étudiants"],[" 28","Pays"],["800+","Entreprises"]].map(([v,l],i)=>(
+            <div key={i} style={{ textAlign:"center" }}>
+              <div style={{ color:C.accent, fontWeight:900, fontSize:18 }}>{v}</div>
+              <div style={{ color:C.muted, fontSize:11 }}>{l}</div>
+            </div>
+          ))}
+        </div>
+        <Btn full onClick={()=>setStep("type")} style={{ fontSize:16, padding:"14px" }}>Commencer →</Btn>
+        <p style={{ color:C.muted, fontSize:12, marginTop:14 }}>Déjà un compte ? <span style={{ color:C.accent, cursor:"pointer" }} onClick={()=>onDone({type:"student",name:"Thomas",email:"thomas@mail.com"})}>Se connecter</span></p>
+      </div>
+    </div>
+  );
+
+  /* Type selection */
+  if(step==="type") return (
+    <div style={{ minHeight:"100vh", background:C.bg, display:"flex", flexDirection:"column", padding:24 }}>
+      <div style={{ marginTop:48, marginBottom:32 }}>
+        <h2 style={{ color:C.text, fontSize:26, fontWeight:900, marginBottom:8 }}>Qui êtes-vous ?</h2>
+        <p style={{ color:C.sub, fontSize:14 }}>Votre espace sera personnalisé selon votre profil.</p>
+      </div>
+      {[
+        { type:"student", icon:"🎓", title:"Je suis Étudiant(e)", desc:"Accède à l'IA, la communauté, les stages et les ressources académiques.", color:C.blue },
+        { type:"company", icon:"🏢", title:"Je représente une Entreprise", desc:"Publiez vos offres de stage/emploi et accédez à des milliers de talents.", color:C.green },
+      ].map(o=>(
+        <div key={o.type} onClick={()=>{ setUserType(o.type); setStep("form"); }} style={{ background:userType===o.type?`${o.color}22`:C.card, border:`2px solid ${userType===o.type?o.color:C.border}`, borderRadius:16, padding:20, marginBottom:14, cursor:"pointer", display:"flex", gap:14, alignItems:"center" }}>
+          <div style={{ width:52, height:52, borderRadius:14, background:`${o.color}22`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:26, flexShrink:0 }}>{o.icon}</div>
+          <div>
+            <div style={{ color:C.text, fontWeight:700, fontSize:16, marginBottom:4 }}>{o.title}</div>
+            <div style={{ color:C.sub, fontSize:13, lineHeight:1.4 }}>{o.desc}</div>
+          </div>
+        </div>
+      ))}
+      <p style={{ color:C.muted, fontSize:11, marginTop:8, textAlign:"center", lineHeight:1.5 }}>En créant un compte, vous acceptez nos Conditions d'utilisation et notre Politique de confidentialité.</p>
+    </div>
+  );
+
+  /* Registration form */
+  if(step==="form") return (
+    <div style={{ minHeight:"100vh", background:C.bg, padding:"24px 20px 40px", overflowY:"auto" }}>
+      <button onClick={()=>setStep("type")} style={{ background:"none", border:"none", color:C.sub, fontSize:14, cursor:"pointer", marginBottom:24 }}>← Retour</button>
+      <h2 style={{ color:C.text, fontSize:22, fontWeight:900, marginBottom:4 }}>{userType==="student"?"Créer mon compte étudiant":"Créer mon espace entreprise"}</h2>
+      <p style={{ color:C.sub, fontSize:13, marginBottom:24 }}>Toutes les informations sont vérifiées pour la sécurité de la communauté.</p>
+
+      <Input label="Nom complet" placeholder={userType==="student"?"Votre nom et prénom":"Nom du responsable"} value={form.name} onChange={e=>set("name",e.target.value)} />
+      <Input label="Email" placeholder="votre@email.com" value={form.email} onChange={e=>set("email",e.target.value)} type="email" />
+      <Input label="Mot de passe" placeholder="Min. 8 caractères" value={form.password} onChange={e=>set("password",e.target.value)} type="password" />
+
+      {userType==="student" && <>
+        <Input label="Filière / Domaine d'études" placeholder="Ex: Droit, Informatique, Médecine..." value={form.field} onChange={e=>set("field",e.target.value)} />
+        <Input label="Université / École" placeholder="Ex: UAC Cotonou, UCAD Dakar..." value={form.university} onChange={e=>set("university",e.target.value)} />
+      </>}
+
+      {userType==="company" && <>
+        <Input label="Nom de l'entreprise" placeholder="Nom légal de votre société" value={form.companyName} onChange={e=>set("companyName",e.target.value)} />
+        <Input label="Secteur d'activité" placeholder="Ex: Finance, Tech, Agriculture..." value={form.sector} onChange={e=>set("sector",e.target.value)} />
+        <Input label="Site web (optionnel)" placeholder="https://..." value={form.website} onChange={e=>set("website",e.target.value)} />
+      </>}
+
+      <Btn full onClick={()=>{ if(form.name&&form.email&&form.password) setStep("verify"); }} disabled={!form.name||!form.email||!form.password} style={{ marginTop:8 }}>
+        Continuer → Vérification
+      </Btn>
+    </div>
+  );
+
+  /* Document verification */
+  if(step==="verify") return (
+    <div style={{ minHeight:"100vh", background:C.bg, padding:"24px 20px 40px", overflowY:"auto" }}>
+      <button onClick={()=>setStep("form")} style={{ background:"none", border:"none", color:C.sub, fontSize:14, cursor:"pointer", marginBottom:24 }}>← Retour</button>
+      <div style={{ background:C.accentDim, border:`1px solid ${C.accent}44`, borderRadius:12, padding:"12px 16px", marginBottom:24, display:"flex", gap:10, alignItems:"flex-start" }}>
+        <span style={{ fontSize:18 }}>🔒</span>
+        <div>
+          <div style={{ color:C.accent, fontWeight:700, fontSize:13 }}>Vérification d'identité obligatoire</div>
+          <div style={{ color:C.sub, fontSize:12, marginTop:2, lineHeight:1.5 }}>Pour garantir la sécurité de tous les membres, nous vérifions chaque compte. Vos documents sont chiffrés et ne sont jamais partagés.</div>
+        </div>
+      </div>
+
+      {userType==="student" && <>
+        <h3 style={{ color:C.text, fontSize:16, fontWeight:700, marginBottom:4 }}>Documents requis — Étudiant</h3>
+        <p style={{ color:C.sub, fontSize:12, marginBottom:16, lineHeight:1.5 }}>Fournissez l'un des justificatifs suivants prouvant votre statut étudiant.</p>
+        <UploadBox label="Carte d'étudiant ou préinscription" hint="JPG, PNG ou PDF • Max 5MB" icon="🪪" onFile={f=>setDocs(d=>({...d,id:f}))} />
+        <UploadBox label="Selfie avec votre pièce d'identité" hint="Tenez votre carte visible devant votre visage" icon="🤳" onFile={f=>setDocs(d=>({...d,selfie:f}))} />
+        <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:10, padding:"10px 14px", marginBottom:16 }}>
+          <div style={{ color:C.sub, fontSize:11, lineHeight:1.6 }}>
+            ✅ Carte d'étudiant valide<br/>
+            ✅ Fiche de préinscription officielle<br/>
+            ✅ Attestation de scolarité<br/>
+            ✅ CNI + selfie (si aucun doc étudiant disponible)
+          </div>
+        </div>
+      </>}
+
+      {userType==="company" && <>
+        <h3 style={{ color:C.text, fontSize:16, fontWeight:700, marginBottom:4 }}>Documents requis — Entreprise</h3>
+        <p style={{ color:C.sub, fontSize:12, marginBottom:16, lineHeight:1.5 }}>Justifiez l'existence légale de votre organisation.</p>
+        <UploadBox label="Registre de Commerce (RCCM)" hint="Document officiel d'immatriculation" icon="📄" onFile={f=>setDocs(d=>({...d,kbis:f}))} />
+        <UploadBox label="Logo de l'entreprise" hint="PNG ou JPG haute qualité" icon="🏢" onFile={f=>setDocs(d=>({...d,logo:f}))} />
+        <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:10, padding:"10px 14px", marginBottom:16 }}>
+          <div style={{ color:C.sub, fontSize:11, lineHeight:1.6 }}>
+            ✅ RCCM (Registre du Commerce et du Crédit Mobilier)<br/>
+            ✅ IFU / NIF (Identifiant Fiscal Unique)<br/>
+            ✅ Statuts de la société signés<br/>
+            ✅ Lettre officielle sur en-tête de l'entreprise
+          </div>
+        </div>
+      </>}
+
+      <div onClick={()=>setAgree(a=>!a)} style={{ display:"flex", gap:10, alignItems:"flex-start", marginBottom:20, cursor:"pointer" }}>
+        <div style={{ width:18, height:18, borderRadius:5, border:`2px solid ${agree?C.accent:C.border}`, background:agree?C.accent:"transparent", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, marginTop:1 }}>
+          {agree && <span style={{ color:"#07090F", fontSize:12, fontWeight:900 }}>✓</span>}
+        </div>
+        <p style={{ color:C.sub, fontSize:12, lineHeight:1.5, margin:0 }}>J'atteste que les informations fournies sont exactes. Toute fausse déclaration entraîne la suspension immédiate du compte.</p>
+      </div>
+
+      <Btn full onClick={submitVerify} disabled={!agree||loading}>
+        {loading ? "Vérification en cours..." : "Soumettre & Créer mon compte →"}
+      </Btn>
+    </div>
+  );
+
+  /* Done */
+  if(step==="done") return (
+    <div style={{ minHeight:"100vh", background:C.bg, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:32, textAlign:"center" }}>
+      <div style={{ width:80, height:80, borderRadius:"50%", background:C.greenDim, border:`3px solid ${C.green}`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:36, marginBottom:24 }}>✅</div>
+      <h2 style={{ color:C.text, fontSize:24, fontWeight:900, marginBottom:8 }}>Compte créé !</h2>
+      <p style={{ color:C.sub, fontSize:14, lineHeight:1.6, marginBottom:8 }}>Votre dossier est en cours de vérification par notre équipe.</p>
+      <p style={{ color:C.muted, fontSize:12, lineHeight:1.6, marginBottom:32 }}>Délai habituel : <strong style={{ color:C.accent }}>2–24h ouvrées</strong>. Vous recevrez un email de confirmation.</p>
+      <Btn onClick={()=>onDone({ type:userType, name:form.name||form.companyName, email:form.email })}>
+        Accéder à mon tableau de bord →
+      </Btn>
+    </div>
+  );
+}
+
+/* ─── STUDENT APP ────────────────────────────────────────────── */
+const STUDENT_NAV = [
+  { id:"home", icon:"🏠", label:"Accueil" },
+  { id:"community", icon:"💬", label:"Communauté" },
+  { id:"messages", icon:"✉️", label:"Messages" },
+  { id:"internships", icon:"💼", label:"Stages" },
+  { id:"ai", icon:"🤖", label:"IA" },
+];
+
+const MOCK_POSTS = [
+  { id:1, user:"Aminata D.", uni:"UCAD Dakar", field:"Économie", time:"il y a 2h", content:"Je partage mon résumé complet sur la macroéconomie keynésienne — 48 pages structurées avec schémas 📚", likes:87, comments:23, avatar:"A", color:C.blue, attachments:[{name:"Macro_keynésienne.pdf",type:"pdf"}] },
+  { id:2, user:"Kofi A.", uni:"UAC Cotonou", field:"Droit OHADA", time:"il y a 4h", content:"Quelqu'un a les arrêts CCJA 2024 sur les sûretés mobilières ? Exam dans 48h 😭", likes:14, comments:8, avatar:"K", color:C.purple, attachments:[] },
+  { id:3, user:"Fatou C.", uni:"UASZ Ziguinchor", field:"Médecine", time:"hier", content:"Protocole de révision que j'utilise depuis 2 ans : Pomodoro 45/10, fiches Anki le soir, QCMs le matin. Mon taux de réussite : 94% ✅", likes:203, comments:67, avatar:"F", color:C.green, attachments:[] },
+];
+
+const MOCK_COMPANIES = [
+  { id:1, name:"Orange Digital Center", sector:"Tech / Numérique", country:"Bénin / Sénégal", logo:"🟠", offers:3, verified:true },
+  { id:2, name:"Ecobank Group", sector:"Finance / Banque", country:"Panafricain", logo:"🟢", offers:5, verified:true },
+  { id:3, name:"MTN Africa", sector:"Télécommunications", country:"Multi-pays", logo:"🔵", offers:2, verified:true },
+  { id:4, name:"Cabinet OHADA Lex", sector:"Droit / Conseil", country:"Bénin", logo:"⚖️", offers:1, verified:true },
+  { id:5, name:"Africa Agri Tech", sector:"Agriculture / Tech", country:"Côte d'Ivoire", logo:"🌱", offers:4, verified:false },
+];
+
+const MOCK_INTERNSHIPS = [
+  { id:1, company:"Orange Digital Center", role:"Développeur Web Frontend", field:"Informatique", duration:"3 mois", location:"Cotonou, Bénin", deadline:"15 Juin 2026", salary:"Indemnisé", match:97 },
+  { id:2, company:"Ecobank Group", role:"Analyste Financier Junior", field:"Finance / Économie", duration:"6 mois", location:"Lomé, Togo", deadline:"30 Juin 2026", salary:"Indemnisé", match:91 },
+  { id:3, company:"Cabinet OHADA Lex", role:"Juriste Stagiaire", field:"Droit", duration:"4 mois", location:"Cotonou, Bénin", deadline:"20 Juin 2026", salary:"Gratifié", match:88 },
+  { id:4, company:"MTN Africa", role:"Assistant Marketing Digital", field:"Marketing / Comm.", duration:"3 mois", location:"Abidjan, CI", deadline:"1 Juil 2026", salary:"Indemnisé", match:76 },
+];
+
+const MOCK_CONVERSATIONS = [
+  { id:1, user:"Seydou T.", preview:"Tu peux m'envoyer ton cours sur les algo ?", time:"10:34", unread:2, avatar:"S", color:C.blue },
+  { id:2, user:"Aminata D.", preview:"Merci pour le partage 🙏", time:"hier", unread:0, avatar:"A", color:C.purple },
+  { id:3, user:"Support AfriLearn", preview:"Votre compte a été vérifié ✅", time:"hier", unread:1, avatar:"AL", color:C.green },
+];
+
+function StudentApp({ user }) {
+  const [page, setPage] = useState("home");
+  const [posts, setPosts] = useState(MOCK_POSTS);
+  const [newPost, setNewPost] = useState("");
+  const [postFile, setPostFile] = useState(null);
+  const [chatOpen, setChatOpen] = useState(null);
+  const [chatMsg, setChatMsg] = useState("");
+  const [convMessages, setConvMessages] = useState({ 1:[{ from:"them", text:"Salut ! Tu as les cours d'algo de L3 ?", time:"10:30"},{ from:"them", text:"Tu peux m'envoyer ton cours sur les algo ?", time:"10:34"}], 2:[{ from:"them", text:"Merci pour le partage 🙏", time:"hier"}], 3:[{ from:"them", text:"Votre compte a été vérifié ✅", time:"hier"}] });
+  const [aiMessages, setAiMessages] = useState([{ role:"assistant", content:"Bonjour ! Je suis l'IA AfriLearn 🎓\nJe t'aide avec tes cours, devoirs, révisions et projets. Pose-moi n'importe quelle question !"}]);
+  const [aiInput, setAiInput] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+  const [activeFilter, setActiveFilter] = useState("Tous");
+  const [applyModal, setApplyModal] = useState(null);
+  const [appliedIds, setAppliedIds] = useState([]);
+  const [applyStep, setApplyStep] = useState(0);
+  const [applyForm, setApplyForm] = useState({ motivation:"", cv:null, letter:null });
+  const aiBottom = useRef();
+  const chatBottom = useRef();
+
+  useEffect(() => { aiBottom.current?.scrollIntoView({ behavior:"smooth"}); }, [aiMessages]);
+  useEffect(() => { chatBottom.current?.scrollIntoView({ behavior:"smooth"}); }, [convMessages, chatOpen]);
+
+  const sendAI = async () => {
+    if(!aiInput.trim()||aiLoading) return;
+    const q = aiInput.trim(); setAiInput(""); setAiLoading(true);
+    const history = [...aiMessages, { role:"user", content:q }];
+    setAiMessages(history);
+    try {
+      const res = await fetch("https://api.anthropic.com/v1/messages", { method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ model:"claude-sonnet-4-20250514", max_tokens:1000,
+          system:"Tu es l'IA AfriLearn, assistant académique et entrepreneurial pour étudiants africains francophones. Tu connais les systèmes éducatifs africains, le droit OHADA, les universités d'Afrique de l'Ouest. Tu parles en français courant, tu es chaleureux, direct, motivant. Max 300 mots par réponse.",
+          messages: history.map(m=>({role:m.role,content:m.content})) }) });
+      const data = await res.json();
+      setAiMessages(p=>[...p, { role:"assistant", content:data.content?.[0]?.text||"Erreur." }]);
+    } catch { setAiMessages(p=>[...p,{role:"assistant",content:"Erreur de connexion."}]); }
+    setAiLoading(false);
+  };
+
+  const sendChat = (convId) => {
+    if(!chatMsg.trim()) return;
+    setConvMessages(prev=>({ ...prev, [convId]: [...(prev[convId]||[]), { from:"me", text:chatMsg, time: new Date().toLocaleTimeString("fr",{hour:"2-digit",minute:"2-digit"})}] }));
+    setChatMsg("");
+  };
+
+  const publishPost = () => {
+    if(!newPost.trim()) return;
+    setPosts(p=>[{ id:Date.now(), user:user.name, uni:"AfriLearn", field:"Général", time:"à l'instant", content:newPost, likes:0, comments:0, avatar:user.name[0], color:C.accent, attachments: postFile?[{name:postFile.name,type:postFile.name.endsWith(".pdf")?"pdf":"image"}]:[] }, ...p]);
+    setNewPost(""); setPostFile(null);
+  };
+
+  const submitApplication = (internship) => {
+    setAppliedIds(p=>[...p, internship.id]);
+    setApplyModal(null); setApplyStep(0);
+    setApplyForm({ motivation:"", cv:null, letter:null });
+  };
+
+  const FIELDS = ["Tous","Informatique","Droit","Finance","Médecine","Marketing","Agriculture"];
+
+  /* ── MODALS ── */
+  const ApplyModal = ({ job }) => (
+    <div style={{ position:"fixed", inset:0, background:"#000000CC", zIndex:999, display:"flex", alignItems:"flex-end" }}>
+      <div style={{ background:C.card, borderRadius:"20px 20px 0 0", padding:"24px 20px 40px", width:"100%", maxWidth:430, margin:"0 auto", maxHeight:"85vh", overflowY:"auto" }}>
+        {applyStep===0 && <>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
+            <h3 style={{ color:C.text, fontSize:17, fontWeight:900 }}>Postuler</h3>
+            <button onClick={()=>setApplyModal(null)} style={{ background:"none", border:"none", color:C.sub, fontSize:20, cursor:"pointer" }}>✕</button>
+          </div>
+          <div style={{ background:C.surface, borderRadius:10, padding:"12px 14px", marginBottom:18, borderLeft:`3px solid ${C.accent}` }}>
+            <div style={{ color:C.text, fontWeight:700, fontSize:14 }}>{job.role}</div>
+            <div style={{ color:C.sub, fontSize:12 }}>{job.company} · {job.location}</div>
+          </div>
+          <label style={{ display:"block", color:C.sub, fontSize:11, letterSpacing:.8, marginBottom:6, textTransform:"uppercase" }}>Lettre de motivation</label>
+          <textarea value={applyForm.motivation} onChange={e=>setApplyForm(f=>({...f,motivation:e.target.value}))} placeholder="Expliquez pourquoi vous êtes le candidat idéal pour ce stage..." style={{ width:"100%", background:C.surface, border:`1px solid ${C.border}`, borderRadius:10, padding:"11px 14px", color:C.text, fontSize:13, outline:"none", resize:"none", minHeight:90, boxSizing:"border-box", fontFamily:"inherit", marginBottom:14 }} rows={4} />
+          <UploadBox label="CV (PDF)" hint="Votre CV à jour, max 5MB" icon="📄" onFile={f=>setApplyForm(p=>({...p,cv:f}))} />
+          <UploadBox label="Lettre officielle (optionnel)" hint="Lettre de recommandation ou relevé de notes" icon="📎" onFile={f=>setApplyForm(p=>({...p,letter:f}))} />
+          <Btn full onClick={()=>setApplyStep(1)} disabled={!applyForm.motivation.trim()||!applyForm.cv} style={{ marginTop:8 }}>Envoyer ma candidature →</Btn>
+        </>}
+        {applyStep===1 && (
+          <div style={{ textAlign:"center", padding:"20px 0" }}>
+            <div style={{ fontSize:52, marginBottom:16 }}>🎉</div>
+            <h3 style={{ color:C.text, fontSize:20, fontWeight:900, marginBottom:8 }}>Candidature envoyée !</h3>
+            <p style={{ color:C.sub, fontSize:13, lineHeight:1.6, marginBottom:24 }}>
+              {job.company} a reçu votre dossier. Vous serez notifié(e) par email et dans l'application dès qu'ils examinent votre candidature.
+            </p>
+            <Btn onClick={()=>submitApplication(job)}>Fermer</Btn>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  /* ── CHAT VIEW ── */
+  if(chatOpen!==null) {
+    const conv = MOCK_CONVERSATIONS.find(c=>c.id===chatOpen);
+    const msgs = convMessages[chatOpen]||[];
+    return (
+      <div style={{ background:C.bg, minHeight:"100vh", display:"flex", flexDirection:"column" }}>
+        <div style={{ background:C.card, borderBottom:`1px solid ${C.border}`, padding:"14px 16px", display:"flex", alignItems:"center", gap:12, position:"sticky", top:0, zIndex:10 }}>
+          <button onClick={()=>setChatOpen(null)} style={{ background:"none", border:"none", color:C.sub, fontSize:18, cursor:"pointer" }}>←</button>
+          <Avatar name={conv.user} color={conv.color} />
+          <div style={{ flex:1 }}>
+            <div style={{ color:C.text, fontWeight:700, fontSize:15 }}>{conv.user}</div>
+            <div style={{ display:"flex", alignItems:"center", gap:5 }}><Dot size={6} /><span style={{ color:C.green, fontSize:11 }}>En ligne</span></div>
+          </div>
+          <button style={{ background:"none", border:"none", color:C.sub, fontSize:18, cursor:"pointer" }}>📞</button>
+        </div>
+        <div style={{ flex:1, overflowY:"auto", padding:"16px 14px 80px" }}>
+          <div style={{ textAlign:"center", marginBottom:16 }}><span style={{ background:C.surface, color:C.muted, borderRadius:20, padding:"4px 14px", fontSize:11 }}>Aujourd'hui</span></div>
+          {msgs.map((m,i)=>(
+            <div key={i} style={{ display:"flex", justifyContent:m.from==="me"?"flex-end":"flex-start", marginBottom:8 }}>
+              {m.from!=="me" && <Avatar name={conv.user} size={30} color={conv.color} style={{ marginRight:8 }} />}
+              <div style={{ maxWidth:"75%", background:m.from==="me"?C.accent:C.card, color:m.from==="me"?"#07090F":C.text, borderRadius:m.from==="me"?"16px 16px 4px 16px":"16px 16px 16px 4px", padding:"10px 13px", fontSize:13, lineHeight:1.5, border:m.from!=="me"?`1px solid ${C.border}`:"none" }}>
+                {m.text}
+                <div style={{ fontSize:10, color:m.from==="me"?"#07090F88":C.muted, marginTop:3, textAlign:"right" }}>{m.time}</div>
+              </div>
+            </div>
+          ))}
+          <div ref={chatBottom} />
+        </div>
+        <div style={{ position:"fixed", bottom:0, left:"50%", transform:"translateX(-50%)", width:"100%", maxWidth:430, background:C.card, borderTop:`1px solid ${C.border}`, padding:"10px 14px 20px", display:"flex", gap:8, alignItems:"center" }}>
+          <label style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:10, width:38, height:38, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", flexShrink:0, fontSize:16 }}>
+            📎<input type="file" style={{ display:"none" }} />
+          </label>
+          <label style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:10, width:38, height:38, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", flexShrink:0, fontSize:16 }}>
+            📷<input type="file" accept="image/*" style={{ display:"none" }} />
+          </label>
+          <input value={chatMsg} onChange={e=>setChatMsg(e.target.value)} onKeyDown={e=>{ if(e.key==="Enter") sendChat(chatOpen); }} placeholder="Message..." style={{ flex:1, background:C.surface, border:`1px solid ${C.border}`, borderRadius:10, padding:"9px 12px", color:C.text, fontSize:14, outline:"none", fontFamily:"inherit" }} />
+          <button onClick={()=>sendChat(chatOpen)} style={{ background:C.accent, border:"none", borderRadius:10, width:38, height:38, cursor:"pointer", fontSize:16, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>➤</button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ background:C.bg, minHeight:"100vh", maxWidth:430, margin:"0 auto", fontFamily:"'Georgia', serif", overflowX:"hidden" }}>
+      <style>{`
+        * { box-sizing:border-box; margin:0; padding:0; }
+        ::-webkit-scrollbar { display:none; }
+        textarea::placeholder, input::placeholder { color:${C.muted}; }
+        @keyframes fadeUp { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+        @keyframes bounce { 0%,80%,100%{transform:translateY(0)} 40%{transform:translateY(-6px)} }
+      `}</style>
+
+      {applyModal && <ApplyModal job={applyModal} />}
+
+      {/* TOP BAR */}
+      <div style={{ background:C.surface, borderBottom:`1px solid ${C.border}`, padding:"13px 18px", display:"flex", alignItems:"center", justifyContent:"space-between", position:"sticky", top:0, zIndex:50 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+          <div style={{ width:28, height:28, borderRadius:7, background:C.accent, display:"flex", alignItems:"center", justifyContent:"center", fontSize:15 }}>🎓</div>
+          <span style={{ color:C.text, fontWeight:900, fontSize:18, letterSpacing:-0.5 }}>Afri<span style={{ color:C.accent }}>Learn</span></span>
+        </div>
+        <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+          <div style={{ position:"relative", cursor:"pointer" }}>
+            <div style={{ width:32, height:32, borderRadius:8, background:C.card, display:"flex", alignItems:"center", justifyContent:"center", fontSize:15 }}>🔔</div>
+            <div style={{ position:"absolute", top:-2, right:-2, width:8, height:8, borderRadius:"50%", background:C.red }} />
+          </div>
+          <Avatar name={user.name} size={32} color={C.accent} />
+        </div>
+      </div>
+
+      {/* PAGE CONTENT */}
+      <div style={{ paddingBottom:72, minHeight:"calc(100vh - 112px)", overflowY:"auto" }}>
+
+        {/* ── HOME ── */}
+        {page==="home" && (
+          <div style={{ padding:"0 0 16px" }}>
+            <div style={{ background:`linear-gradient(135deg, #07090F, #0D1520)`, padding:"28px 18px 24px", position:"relative", overflow:"hidden" }}>
+              <div style={{ position:"absolute", top:-50, right:-50, width:180, height:180, borderRadius:"50%", background:`radial-gradient(${C.accentDim},transparent 70%)` }} />
+              <p style={{ color:C.sub, fontSize:13, marginBottom:4 }}>Bonjour 👋</p>
+              <h2 style={{ color:C.text, fontSize:24, fontWeight:900, marginBottom:4 }}>{user.name.split(" ")[0]}</h2>
+              <div style={{ display:"flex", gap:6, alignItems:"center" }}>
+                <Badge label="Étudiant vérifié ✓" color={C.green} />
+              </div>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10, marginTop:20 }}>
+                {[["📚","Cours partagés","2,847"],["💼","Offres actives","134"],["🏆","Ton rang","#142"]].map(([i,l,v],idx)=>(
+                  <div key={idx} style={{ background:"#ffffff0A", borderRadius:12, padding:"12px 10px", textAlign:"center" }}>
+                    <div style={{ fontSize:20, marginBottom:4 }}>{i}</div>
+                    <div style={{ color:C.accent, fontWeight:900, fontSize:16 }}>{v}</div>
+                    <div style={{ color:C.muted, fontSize:10, marginTop:2 }}>{l}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ padding:"18px 16px 0" }}>
+              <h3 style={{ color:C.text, fontSize:16, fontWeight:700, marginBottom:12 }}>Accès rapide</h3>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:20 }}>
+                {[
+                  { icon:"🤖", title:"Demander à l'IA", desc:"Aide aux devoirs", page:"ai", color:C.accent },
+                  { icon:"💬", title:"Communauté", desc:"Partage & discussions", page:"community", color:C.blue },
+                  { icon:"💼", title:"Stages & Emplois", desc:"134 offres actives", page:"internships", color:C.green },
+                  { icon:"✉️", title:"Messages", desc:"3 non lus", page:"messages", color:C.purple },
+                ].map((f,i)=>(
+                  <div key={i} onClick={()=>setPage(f.page)} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:14, padding:"14px 12px", cursor:"pointer", borderTop:`3px solid ${f.color}` }}>
+                    <div style={{ fontSize:22, marginBottom:8 }}>{f.icon}</div>
+                    <div style={{ color:C.text, fontSize:13, fontWeight:700, marginBottom:2 }}>{f.title}</div>
+                    <div style={{ color:C.muted, fontSize:11 }}>{f.desc}</div>
+                  </div>
+                ))}
+              </div>
+
+              <h3 style={{ color:C.text, fontSize:16, fontWeight:700, marginBottom:12 }}>Offres recommandées pour toi</h3>
+              {MOCK_INTERNSHIPS.slice(0,2).map(j=>(
+                <div key={j.id} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:14, padding:"14px", marginBottom:10, borderLeft:`3px solid ${j.match>90?C.green:C.accent}` }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:6 }}>
+                    <div style={{ color:C.text, fontWeight:700, fontSize:14 }}>{j.role}</div>
+                    <Badge label={`${j.match}% match`} color={j.match>90?C.green:C.accent} />
+                  </div>
+                  <div style={{ color:C.sub, fontSize:12, marginBottom:10 }}>{j.company} · {j.location}</div>
+                  <Btn onClick={()=>{ if(!appliedIds.includes(j.id)) setApplyModal(j); }} variant={appliedIds.includes(j.id)?"secondary":"primary"} style={{ fontSize:12, padding:"7px 14px" }}>
+                    {appliedIds.includes(j.id)?"✅ Candidature envoyée":"Postuler →"}
+                  </Btn>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── COMMUNITY ── */}
+        {page==="community" && (
+          <div style={{ padding:"14px 14px 0" }}>
+            {/* Composer */}
+            <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:14, padding:"14px", marginBottom:14 }}>
+              <div style={{ display:"flex", gap:10, marginBottom:10 }}>
+                <Avatar name={user.name} size={36} color={C.accent} />
+                <textarea value={newPost} onChange={e=>setNewPost(e.target.value)} placeholder="Partage un cours, pose une question, aide la communauté..." style={{ flex:1, background:C.surface, border:`1px solid ${C.border}`, borderRadius:10, padding:"9px 12px", color:C.text, fontSize:13, resize:"none", outline:"none", fontFamily:"inherit", minHeight:60 }} rows={2} />
+              </div>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                <div style={{ display:"flex", gap:8 }}>
+                  <label style={{ display:"flex", alignItems:"center", gap:5, color:C.sub, fontSize:12, cursor:"pointer" }}>
+                    <span style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:7, padding:"5px 10px", fontSize:13 }}>📎</span>
+                    <input type="file" style={{ display:"none" }} onChange={e=>setPostFile(e.target.files[0])} />
+                    {postFile ? <span style={{ color:C.green, fontSize:11 }}>{postFile.name}</span> : "Fichier"}
+                  </label>
+                  <label style={{ display:"flex", alignItems:"center", gap:5, color:C.sub, fontSize:12, cursor:"pointer" }}>
+                    <span style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:7, padding:"5px 10px", fontSize:13 }}>📷</span>
+                    <input type="file" accept="image/*" style={{ display:"none" }} />Photo
+                  </label>
+                </div>
+                <Btn onClick={publishPost} disabled={!newPost.trim()} style={{ fontSize:12, padding:"7px 16px" }}>Publier</Btn>
+              </div>
+            </div>
+
+            {/* Filter pills */}
+            <div style={{ display:"flex", gap:7, overflowX:"auto", marginBottom:14, paddingBottom:4 }}>
+              {["Tout","Cours","Questions","Ressources","Discussions"].map(f=>(
+                <Pill key={f} label={f} active={activeFilter===f} onClick={()=>setActiveFilter(f)} />
+              ))}
+            </div>
+
+            {/* Posts */}
+            {posts.map(p=>(
+              <div key={p.id} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:14, padding:"14px", marginBottom:12, animation:"fadeUp .3s ease" }}>
+                <div style={{ display:"flex", gap:10, marginBottom:10 }}>
+                  <Avatar name={p.avatar} size={38} color={p.color} />
+                  <div style={{ flex:1 }}>
+                    <div style={{ display:"flex", justifyContent:"space-between" }}>
+                      <div style={{ color:C.text, fontWeight:700, fontSize:13 }}>{p.user}</div>
+                      <span style={{ color:C.muted, fontSize:11 }}>{p.time}</span>
+                    </div>
+                    <div style={{ color:C.muted, fontSize:11 }}>{p.uni} · <span style={{ color:p.color }}>{p.field}</span></div>
+                  </div>
+                </div>
+                <p style={{ color:C.text, fontSize:13, lineHeight:1.6, marginBottom:10 }}>{p.content}</p>
+                {p.attachments?.length>0 && (
+                  <div style={{ display:"flex", gap:8, marginBottom:10 }}>
+                    {p.attachments.map((a,i)=>(
+                      <div key={i} style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:8, padding:"6px 10px", display:"flex", gap:6, alignItems:"center" }}>
+                        <span>{a.type==="pdf"?"📄":"🖼️"}</span>
+                        <span style={{ color:C.sub, fontSize:11 }}>{a.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div style={{ display:"flex", gap:16, borderTop:`1px solid ${C.border}`, paddingTop:10 }}>
+                  <button style={{ background:"none", border:"none", color:C.sub, fontSize:12, cursor:"pointer", display:"flex", gap:4, alignItems:"center" }}>❤️ {p.likes}</button>
+                  <button style={{ background:"none", border:"none", color:C.sub, fontSize:12, cursor:"pointer", display:"flex", gap:4, alignItems:"center" }}>💬 {p.comments}</button>
+                  <button style={{ background:"none", border:"none", color:C.sub, fontSize:12, cursor:"pointer" }}>↗️ Partager</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ── MESSAGES ── */}
+        {page==="messages" && (
+          <div style={{ padding:"14px" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
+              <h3 style={{ color:C.text, fontSize:18, fontWeight:900 }}>Messages</h3>
+              <button style={{ background:C.accentDim, color:C.accent, border:`1px solid ${C.accent}44`, borderRadius:8, padding:"6px 12px", fontSize:12, cursor:"pointer", fontFamily:"inherit", fontWeight:700 }}>+ Nouveau</button>
+            </div>
+            <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:10, padding:"9px 12px", marginBottom:14, display:"flex", gap:8, alignItems:"center" }}>
+              <span style={{ color:C.muted }}>🔍</span>
+              <input placeholder="Rechercher une conversation..." style={{ flex:1, background:"transparent", border:"none", color:C.text, fontSize:13, outline:"none", fontFamily:"inherit" }} />
+            </div>
+            {MOCK_CONVERSATIONS.map(conv=>(
+              <div key={conv.id} onClick={()=>setChatOpen(conv.id)} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:12, padding:"13px 14px", marginBottom:8, display:"flex", gap:12, alignItems:"center", cursor:"pointer" }}>
+                <div style={{ position:"relative" }}>
+                  <Avatar name={conv.avatar} size={42} color={conv.color} />
+                  <div style={{ position:"absolute", bottom:0, right:0, width:11, height:11, borderRadius:"50%", background:C.green, border:`2px solid ${C.card}` }} />
+                </div>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ display:"flex", justifyContent:"space-between" }}>
+                    <span style={{ color:C.text, fontWeight:700, fontSize:14 }}>{conv.user}</span>
+                    <span style={{ color:C.muted, fontSize:11 }}>{conv.time}</span>
+                  </div>
+                  <div style={{ color:C.sub, fontSize:12, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", marginTop:2 }}>{conv.preview}</div>
+                </div>
+                {conv.unread>0 && <div style={{ background:C.accent, color:"#07090F", borderRadius:"50%", width:20, height:20, display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:900, flexShrink:0 }}>{conv.unread}</div>}
+              </div>
+            ))}
+            <div style={{ background:C.accentDim, border:`1px solid ${C.accent}33`, borderRadius:12, padding:"14px", marginTop:8, textAlign:"center" }}>
+              <div style={{ fontSize:20, marginBottom:6 }}>🔒</div>
+              <div style={{ color:C.accent, fontSize:13, fontWeight:700, marginBottom:3 }}>Messages chiffrés de bout en bout</div>
+              <div style={{ color:C.sub, fontSize:11 }}>Vos conversations sont privées et sécurisées</div>
+            </div>
+          </div>
+        )}
+
+        {/* ── INTERNSHIPS ── */}
+        {page==="internships" && (
+          <div style={{ padding:"14px" }}>
+            <h3 style={{ color:C.text, fontSize:18, fontWeight:900, marginBottom:4 }}>Stages & Emplois</h3>
+            <p style={{ color:C.sub, fontSize:12, marginBottom:16 }}>Offres filtrées par l'IA selon ton profil et ta filière</p>
+
+            {/* Search */}
+            <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:10, padding:"9px 12px", marginBottom:12, display:"flex", gap:8 }}>
+              <span style={{ color:C.muted }}>🔍</span>
+              <input placeholder="Poste, entreprise, ville..." style={{ flex:1, background:"transparent", border:"none", color:C.text, fontSize:13, outline:"none", fontFamily:"inherit" }} />
+            </div>
+
+            {/* Field filters */}
+            <div style={{ display:"flex", gap:7, overflowX:"auto", marginBottom:16, paddingBottom:4 }}>
+              {FIELDS.map(f=>(
+                <Pill key={f} label={f} active={activeFilter===f} onClick={()=>setActiveFilter(f)} />
+              ))}
+            </div>
+
+            {/* Entreprises partenaires */}
+            <div style={{ marginBottom:18 }}>
+              <h4 style={{ color:C.sub, fontSize:11, letterSpacing:.8, textTransform:"uppercase", marginBottom:10 }}>Entreprises partenaires</h4>
+              <div style={{ display:"flex", gap:8, overflowX:"auto", paddingBottom:4 }}>
+                {MOCK_COMPANIES.map(c=>(
+                  <div key={c.id} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:12, padding:"12px 14px", flexShrink:0, width:130, textAlign:"center" }}>
+                    <div style={{ fontSize:24, marginBottom:6 }}>{c.logo}</div>
+                    <div style={{ color:C.text, fontSize:12, fontWeight:700, marginBottom:2, lineHeight:1.2 }}>{c.name}</div>
+                    <div style={{ color:C.muted, fontSize:10, marginBottom:6 }}>{c.sector}</div>
+                    {c.verified && <Badge label="✓ Vérifié" color={C.green} />}
+                    <div style={{ color:C.accent, fontSize:11, marginTop:6 }}>{c.offers} offre{c.offers>1?"s":""}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Offers list */}
+            <h4 style={{ color:C.sub, fontSize:11, letterSpacing:.8, textTransform:"uppercase", marginBottom:10 }}>Toutes les offres ({MOCK_INTERNSHIPS.length})</h4>
+            {MOCK_INTERNSHIPS.map(j=>(
+              <div key={j.id} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:14, padding:"16px", marginBottom:12, animation:"fadeUp .3s ease" }}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:6 }}>
+                  <div style={{ flex:1 }}>
+                    <div style={{ color:C.text, fontWeight:900, fontSize:15, marginBottom:3 }}>{j.role}</div>
+                    <div style={{ color:C.sub, fontSize:12 }}>{j.company}</div>
+                  </div>
+                  <Badge label={`${j.match}%`} color={j.match>90?C.green:j.match>80?C.accent:C.blue} />
+                </div>
+                <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom:12 }}>
+                  {[["📍",j.location],["⏱️",j.duration],["💰",j.salary],["⏰",j.deadline]].map(([i,v],idx)=>(
+                    <span key={idx} style={{ background:C.surface, borderRadius:6, padding:"3px 8px", fontSize:11, color:C.sub, display:"flex", gap:4, alignItems:"center" }}>{i} {v}</span>
+                  ))}
+                </div>
+                <div style={{ display:"flex", gap:8 }}>
+                  <Btn onClick={()=>{ if(!appliedIds.includes(j.id)) setApplyModal(j); }} variant={appliedIds.includes(j.id)?"secondary":"primary"} style={{ flex:1, fontSize:13, padding:"10px" }}>
+                    {appliedIds.includes(j.id)?"✅ Candidature envoyée":"Postuler maintenant"}
+                  </Btn>
+                  <Btn variant="ghost" style={{ padding:"10px 14px", fontSize:13 }}>🔖</Btn>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ── AI ── */}
+        {page==="ai" && (
+          <div style={{ display:"flex", flexDirection:"column", height:"calc(100vh - 112px)" }}>
+            <div style={{ background:C.card, borderBottom:`1px solid ${C.border}`, padding:"12px 16px", display:"flex", gap:10, alignItems:"center" }}>
+              <div style={{ width:36, height:36, borderRadius:10, background:C.accentDim, display:"flex", alignItems:"center", justifyContent:"center", fontSize:18 }}>🤖</div>
+              <div>
+                <div style={{ color:C.text, fontWeight:700, fontSize:14 }}>Assistant IA AfriLearn</div>
+                <div style={{ display:"flex", alignItems:"center", gap:5 }}><Dot size={6} /><span style={{ color:C.green, fontSize:11 }}>Prêt · Contexte africain</span></div>
+              </div>
+            </div>
+            <div style={{ flex:1, overflowY:"auto", padding:"16px 14px 10px" }}>
+              {aiMessages.map((m,i)=>(
+                <div key={i} style={{ display:"flex", justifyContent:m.role==="user"?"flex-end":"flex-start", marginBottom:12 }}>
+                  {m.role==="assistant" && <div style={{ width:30, height:30, borderRadius:8, background:C.accentDim, display:"flex", alignItems:"center", justifyContent:"center", fontSize:15, marginRight:8, flexShrink:0, marginTop:2 }}>🤖</div>}
+                  <div style={{ maxWidth:"78%", background:m.role==="user"?C.accent:C.card, color:m.role==="user"?"#07090F":C.text, borderRadius:m.role==="user"?"14px 14px 4px 14px":"14px 14px 14px 4px", padding:"11px 13px", fontSize:13, lineHeight:1.6, border:m.role==="assistant"?`1px solid ${C.border}`:"none", whiteSpace:"pre-wrap" }}>
+                    {m.content}
+                  </div>
+                </div>
+              ))}
+              {aiLoading && (
+                <div style={{ display:"flex", gap:8, marginBottom:12 }}>
+                  <div style={{ width:30, height:30, borderRadius:8, background:C.accentDim, display:"flex", alignItems:"center", justifyContent:"center", fontSize:15 }}>🤖</div>
+                  <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:"14px 14px 14px 4px", padding:"12px 14px", display:"flex", gap:4 }}>
+                    {[0,1,2].map(i=><div key={i} style={{ width:6, height:6, borderRadius:"50%", background:C.accent, animation:`bounce 1.2s ${i*.2}s infinite` }} />)}
+                  </div>
+                </div>
+              )}
+              {aiMessages.length===1 && (
+                <div style={{ marginTop:10 }}>
+                  <div style={{ color:C.muted, fontSize:12, marginBottom:10, textAlign:"center" }}>Suggestions</div>
+                  <div style={{ display:"flex", flexWrap:"wrap", gap:7, justifyContent:"center" }}>
+                    {["Explique-moi le droit OHADA","Aide-moi à résumer un cours","Comment faire un business plan ?","Prépare-moi pour un entretien"].map((s,i)=>(
+                      <button key={i} onClick={()=>setAiInput(s)} style={{ background:C.blueDim, border:`1px solid ${C.blue}44`, color:C.text, borderRadius:20, padding:"6px 12px", fontSize:12, cursor:"pointer", fontFamily:"inherit" }}>{s}</button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div ref={aiBottom} />
+            </div>
+            <div style={{ padding:"10px 14px 14px", background:C.card, borderTop:`1px solid ${C.border}`, display:"flex", gap:8 }}>
+              <textarea value={aiInput} onChange={e=>setAiInput(e.target.value)} onKeyDown={e=>{ if(e.key==="Enter"&&!e.shiftKey){ e.preventDefault(); sendAI(); }}} placeholder="Pose ta question..." style={{ flex:1, background:C.surface, border:`1px solid ${C.border}`, borderRadius:10, padding:"9px 12px", color:C.text, fontSize:13, resize:"none", outline:"none", fontFamily:"inherit", minHeight:40, maxHeight:90 }} rows={1} />
+              <button onClick={sendAI} disabled={!aiInput.trim()||aiLoading} style={{ width:40, height:40, borderRadius:10, background:aiInput.trim()?C.accent:C.border, border:"none", cursor:aiInput.trim()?"pointer":"default", fontSize:16, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>➤</button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* BOTTOM NAV */}
+      <div style={{ position:"fixed", bottom:0, left:"50%", transform:"translateX(-50%)", width:"100%", maxWidth:430, background:C.surface, borderTop:`1px solid ${C.border}`, display:"flex", padding:"8px 0 14px", zIndex:50 }}>
+        {STUDENT_NAV.map(n=>(
+          <button key={n.id} onClick={()=>setPage(n.id)} style={{ flex:1, background:"none", border:"none", cursor:"pointer", display:"flex", flexDirection:"column", alignItems:"center", gap:3 }}>
+            <span style={{ fontSize:19, filter:page===n.id?"none":"grayscale(1) opacity(.45)", transform:page===n.id?"scale(1.1)":"scale(1)", transition:"all .15s", display:"block" }}>{n.icon}</span>
+            <span style={{ fontSize:9, color:page===n.id?C.accent:C.muted, transition:"color .15s", fontFamily:"inherit" }}>{n.label}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ─── COMPANY APP ────────────────────────────────────────────── */
+const MOCK_APPLICATIONS = [
+  { id:1, name:"Kofi Asante", field:"Droit", uni:"UAC Cotonou", role:"Juriste Stagiaire", date:"28 Mai 2026", status:"pending", score:94, avatar:"K", color:C.blue },
+  { id:2, name:"Aminata Diallo", field:"Finance", uni:"UCAD Dakar", role:"Analyste Junior", date:"27 Mai 2026", status:"reviewed", score:91, avatar:"A", color:C.purple },
+  { id:3, name:"Seydou Traoré", field:"Informatique", uni:"USTTB Bamako", role:"Dev Frontend", date:"26 Mai 2026", status:"accepted", score:97, avatar:"S", color:C.green },
+  { id:4, name:"Fatou Camara", field:"Marketing", uni:"UASZ Ziguinchor", role:"Assistant Marketing", date:"25 Mai 2026", status:"pending", score:83, avatar:"F", color:C.accent },
+];
+
+const COMP_NAV = [
+  { id:"dashboard", icon:"📊", label:"Dashboard" },
+  { id:"offers", icon:"📋", label:"Offres" },
+  { id:"applications", icon:"👥", label:"Candidatures" },
+  { id:"profile", icon:"🏢", label:"Profil" },
+];
+
+function CompanyApp({ user }) {
+  const [page, setPage] = useState("dashboard");
+  const [applications, setApplications] = useState(MOCK_APPLICATIONS);
+  const [offers, setOffers] = useState([
+    { id:1, role:"Développeur Web Frontend", field:"Informatique", type:"Stage", duration:"3 mois", location:"Cotonou", salary:"Indemnisé", deadline:"15 Juin 2026", active:true, applicants:12 },
+    { id:2, role:"Analyste Financier Junior", field:"Finance", type:"Stage", duration:"6 mois", location:"Lomé", salary:"Indemnisé", deadline:"30 Juin 2026", active:true, applicants:8 },
+  ]);
+  const [showNewOffer, setShowNewOffer] = useState(false);
+  const [newOffer, setNewOffer] = useState({ role:"", field:"", type:"Stage", duration:"", location:"", salary:"", deadline:"", description:"" });
+  const setO = (k,v) => setNewOffer(f=>({...f,[k]:v}));
+  const publishOffer = () => {
+    if(!newOffer.role) return;
+    setOffers(p=>[...p, { id:Date.now(), ...newOffer, active:true, applicants:0 }]);
+    setNewOffer({ role:"", field:"", type:"Stage", duration:"", location:"", salary:"", deadline:"", description:"" });
+    setShowNewOffer(false);
+  };
+  const updateStatus = (id, status) => setApplications(p=>p.map(a=>a.id===id?{...a,status}:a));
+
+  const statusColor = { pending:C.accent, reviewed:C.blue, accepted:C.green, rejected:C.red };
+  const statusLabel = { pending:"En attente", reviewed:"Examinée", accepted:"Acceptée", rejected:"Refusée" };
+
+  return (
+    <div style={{ background:C.bg, minHeight:"100vh", maxWidth:430, margin:"0 auto", fontFamily:"Georgia, serif", overflowX:"hidden" }}>
+      <style>{`* { box-sizing:border-box; margin:0; padding:0; } ::-webkit-scrollbar { display:none; } textarea::placeholder, input::placeholder { color:${C.muted}; } @keyframes fadeUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }`}</style>
+
+      {/* New Offer Modal */}
+      {showNewOffer && (
+        <div style={{ position:"fixed", inset:0, background:"#000000CC", zIndex:999, display:"flex", alignItems:"flex-end" }}>
+          <div style={{ background:C.card, borderRadius:"20px 20px 0 0", padding:"24px 20px 40px", width:"100%", maxWidth:430, margin:"0 auto", maxHeight:"90vh", overflowY:"auto" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", marginBottom:20 }}>
+              <h3 style={{ color:C.text, fontSize:17, fontWeight:900 }}>Nouvelle offre</h3>
+              <button onClick={()=>setShowNewOffer(false)} style={{ background:"none", border:"none", color:C.sub, fontSize:20, cursor:"pointer" }}>✕</button>
+            </div>
+            <Input label="Intitulé du poste" placeholder="Ex: Développeur Mobile" value={newOffer.role} onChange={e=>setO("role",e.target.value)} />
+            <Input label="Domaine / Filière ciblée" placeholder="Ex: Informatique, Droit, Finance..." value={newOffer.field} onChange={e=>setO("field",e.target.value)} />
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+              <div>
+                <label style={{ display:"block", color:C.sub, fontSize:11, letterSpacing:.8, marginBottom:6, textTransform:"uppercase" }}>Type</label>
+                <select value={newOffer.type} onChange={e=>setO("type",e.target.value)} style={{ width:"100%", background:C.surface, border:`1px solid ${C.border}`, borderRadius:10, padding:"11px 14px", color:C.text, fontSize:14, outline:"none", fontFamily:"inherit" }}>
+                  <option>Stage</option><option>Emploi</option><option>Alternance</option>
+                </select>
+              </div>
+              <Input label="Durée" placeholder="Ex: 3 mois" value={newOffer.duration} onChange={e=>setO("duration",e.target.value)} />
+            </div>
+            <Input label="Ville / Pays" placeholder="Ex: Cotonou, Bénin" value={newOffer.location} onChange={e=>setO("location",e.target.value)} />
+            <Input label="Rémunération" placeholder="Ex: Indemnisé, 80 000 FCFA..." value={newOffer.salary} onChange={e=>setO("salary",e.target.value)} />
+            <Input label="Date limite de candidature" placeholder="JJ/MM/AAAA" value={newOffer.deadline} onChange={e=>setO("deadline",e.target.value)} />
+            <div style={{ marginBottom:14 }}>
+              <label style={{ display:"block", color:C.sub, fontSize:11, letterSpacing:.8, marginBottom:6, textTransform:"uppercase" }}>Description du poste</label>
+              <textarea value={newOffer.description} onChange={e=>setO("description",e.target.value)} placeholder="Missions, profil recherché, compétences requises..." style={{ width:"100%", background:C.surface, border:`1px solid ${C.border}`, borderRadius:10, padding:"11px 14px", color:C.text, fontSize:13, resize:"none", outline:"none", fontFamily:"inherit", minHeight:80 }} rows={3} />
+            </div>
+            <Btn full onClick={publishOffer} disabled={!newOffer.role}>Publier l'offre →</Btn>
+          </div>
+        </div>
+      )}
+
+      {/* TOP BAR */}
+      <div style={{ background:C.surface, borderBottom:`1px solid ${C.border}`, padding:"13px 18px", display:"flex", alignItems:"center", justifyContent:"space-between", position:"sticky", top:0, zIndex:50 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+          <div style={{ width:28, height:28, borderRadius:7, background:C.accent, display:"flex", alignItems:"center", justifyContent:"center", fontSize:15 }}>🎓</div>
+          <span style={{ color:C.text, fontWeight:900, fontSize:18, letterSpacing:-0.5 }}>Afri<span style={{ color:C.accent }}>Learn</span> <span style={{ color:C.green, fontSize:12, fontWeight:400 }}>Entreprise</span></span>
+        </div>
+        <Badge label="✓ Vérifié" color={C.green} />
+      </div>
+
+      <div style={{ paddingBottom:72, overflowY:"auto" }}>
+
+        {/* ── DASHBOARD ── */}
+        {page==="dashboard" && (
+          <div style={{ padding:"16px" }}>
+            <div style={{ background:`linear-gradient(135deg, #07090F, #0D1520)`, borderRadius:16, padding:"20px", marginBottom:18, position:"relative", overflow:"hidden", border:`1px solid ${C.border}` }}>
+              <div style={{ position:"absolute", top:-40, right:-40, width:130, height:130, borderRadius:"50%", background:`radial-gradient(${C.greenDim},transparent 70%)` }} />
+              <div style={{ fontSize:10, color:C.muted, letterSpacing:1, textTransform:"uppercase", marginBottom:4 }}>Bienvenue</div>
+              <h2 style={{ color:C.text, fontSize:20, fontWeight:900, marginBottom:4 }}>{user.name}</h2>
+              <div style={{ display:"flex", gap:6 }}>
+                <Badge label="Entreprise vérifiée ✓" color={C.green} />
+              </div>
+            </div>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:18 }}>
+              {[
+                { icon:"📋", val:offers.length, label:"Offres actives", color:C.accent },
+                { icon:"👥", val:applications.length, label:"Candidatures", color:C.blue },
+                { icon:"⏳", val:applications.filter(a=>a.status==="pending").length, label:"En attente", color:C.purple },
+                { icon:"✅", val:applications.filter(a=>a.status==="accepted").length, label:"Acceptées", color:C.green },
+              ].map((s,i)=>(
+                <div key={i} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:14, padding:"14px 12px", borderTop:`3px solid ${s.color}` }}>
+                  <div style={{ fontSize:20, marginBottom:6 }}>{s.icon}</div>
+                  <div style={{ color:s.color, fontSize:22, fontWeight:900 }}>{s.val}</div>
+                  <div style={{ color:C.muted, fontSize:11, marginTop:2 }}>{s.label}</div>
+                </div>
+              ))}
+            </div>
+
+            <h3 style={{ color:C.text, fontSize:15, fontWeight:700, marginBottom:12 }}>Candidatures récentes</h3>
+            {applications.slice(0,3).map(a=>(
+              <div key={a.id} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:12, padding:"13px", marginBottom:8, display:"flex", gap:10, alignItems:"center" }}>
+                <Avatar name={a.avatar} size={38} color={a.color} />
+                <div style={{ flex:1 }}>
+                  <div style={{ color:C.text, fontSize:13, fontWeight:700 }}>{a.name}</div>
+                  <div style={{ color:C.sub, fontSize:11 }}>{a.field} · {a.uni}</div>
+                </div>
+                <Badge label={statusLabel[a.status]} color={statusColor[a.status]} />
+              </div>
+            ))}
+            <Btn variant="ghost" full onClick={()=>setPage("applications")} style={{ marginTop:8, fontSize:13 }}>Voir toutes les candidatures →</Btn>
+          </div>
+        )}
+
+        {/* ── OFFERS ── */}
+        {page==="offers" && (
+          <div style={{ padding:"16px" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
+              <h3 style={{ color:C.text, fontSize:18, fontWeight:900 }}>Mes offres</h3>
+              <Btn onClick={()=>setShowNewOffer(true)} style={{ fontSize:12, padding:"8px 14px" }}>+ Publier</Btn>
+            </div>
+            {offers.map(o=>(
+              <div key={o.id} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:14, padding:"16px", marginBottom:12 }}>
+                <div style={{ display:"flex", justifyContent:"space-between", marginBottom:8 }}>
+                  <div>
+                    <div style={{ color:C.text, fontWeight:900, fontSize:15 }}>{o.role}</div>
+                    <div style={{ color:C.sub, fontSize:12, marginTop:2 }}>{o.field} · {o.location}</div>
+                  </div>
+                  <div style={{ textAlign:"right" }}>
+                    <Badge label={o.active?"Active":"Inactive"} color={o.active?C.green:C.muted} />
+                    <div style={{ color:C.accent, fontSize:13, fontWeight:700, marginTop:6 }}>{o.applicants} candidat{o.applicants>1?"s":""}</div>
+                  </div>
+                </div>
+                <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:12 }}>
+                  {[["⏱️",o.duration],["💰",o.salary],["⏰",o.deadline]].map(([i,v],idx)=>(
+                    <span key={idx} style={{ background:C.surface, borderRadius:6, padding:"3px 8px", fontSize:11, color:C.sub }}>{i} {v}</span>
+                  ))}
+                </div>
+                <div style={{ display:"flex", gap:8 }}>
+                  <Btn variant="secondary" style={{ flex:1, fontSize:12, padding:"9px" }} onClick={()=>setPage("applications")}>Voir candidatures</Btn>
+                  <Btn variant="ghost" style={{ fontSize:12, padding:"9px 12px" }}>✏️</Btn>
+                  <Btn variant="danger" style={{ fontSize:12, padding:"9px 12px" }}>🗑️</Btn>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ── APPLICATIONS ── */}
+        {page==="applications" && (
+          <div style={{ padding:"16px" }}>
+            <h3 style={{ color:C.text, fontSize:18, fontWeight:900, marginBottom:6 }}>Candidatures reçues</h3>
+            <p style={{ color:C.sub, fontSize:12, marginBottom:14 }}>Score IA basé sur l'adéquation profil/poste</p>
+            <div style={{ display:"flex", gap:7, overflowX:"auto", marginBottom:16, paddingBottom:4 }}>
+              {["Toutes","En attente","Examinées","Acceptées"].map(f=>(
+                <Pill key={f} label={f} active={activeFilter===f} onClick={()=>setActiveFilter(f)} />
+              ))}
+            </div>
+            {applications.map(a=>(
+              <div key={a.id} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:14, padding:"16px", marginBottom:12, animation:"fadeUp .3s ease" }}>
+                <div style={{ display:"flex", gap:10, marginBottom:12, alignItems:"center" }}>
+                  <Avatar name={a.avatar} size={44} color={a.color} />
+                  <div style={{ flex:1 }}>
+                    <div style={{ color:C.text, fontWeight:900, fontSize:15 }}>{a.name}</div>
+                    <div style={{ color:C.sub, fontSize:12 }}>{a.field} · {a.uni}</div>
+                    <div style={{ color:C.muted, fontSize:11, marginTop:2 }}>Pour : {a.role} · {a.date}</div>
+                  </div>
+                  <div style={{ textAlign:"center" }}>
+                    <div style={{ color:a.score>90?C.green:C.accent, fontWeight:900, fontSize:18 }}>{a.score}</div>
+                    <div style={{ color:C.muted, fontSize:9 }}>score IA</div>
+                  </div>
+                </div>
+                <div style={{ display:"flex", gap:7, marginBottom:10 }}>
+                  <span style={{ background:`${statusColor[a.status]}22`, color:statusColor[a.status], border:`1px solid ${statusColor[a.status]}44`, borderRadius:6, padding:"3px 8px", fontSize:11, fontWeight:700 }}>{statusLabel[a.status]}</span>
+                </div>
+                <div style={{ display:"flex", gap:7 }}>
+                  <Btn onClick={()=>updateStatus(a.id,"accepted")} style={{ flex:1, background:C.greenDim, color:C.green, fontSize:12, padding:"8px" }}>✅ Accepter</Btn>
+                  <Btn onClick={()=>updateStatus(a.id,"reviewed")} variant="secondary" style={{ flex:1, fontSize:12, padding:"8px" }}>👁️ Examiner</Btn>
+                  <Btn onClick={()=>updateStatus(a.id,"rejected")} style={{ background:C.redDim, color:C.red, border:"none", fontSize:12, padding:"8px 12px", borderRadius:11, cursor:"pointer" }}>✕</Btn>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ── PROFILE ── */}
+        {page==="profile" && (
+          <div style={{ padding:"16px" }}>
+            <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:16, padding:"20px", marginBottom:16, textAlign:"center" }}>
+              <div style={{ width:60, height:60, borderRadius:16, background:C.greenDim, border:`2px solid ${C.green}`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:28, margin:"0 auto 12px" }}>🏢</div>
+              <h3 style={{ color:C.text, fontSize:18, fontWeight:900, marginBottom:4 }}>{user.name}</h3>
+              <Badge label="✓ Entreprise vérifiée" color={C.green} />
+              <div style={{ color:C.sub, fontSize:12, marginTop:8 }}>Membre depuis Mai 2026</div>
+            </div>
+            {[
+              { icon:"📊", label:"Statistiques détaillées", arrow:true },
+              { icon:"🔔", label:"Notifications", arrow:true },
+              { icon:"🔒", label:"Sécurité du compte", arrow:true },
+              { icon:"💳", label:"Abonnement & Facturation", arrow:true },
+              { icon:"🤝", label:"Partenariat AfriLearn", arrow:true },
+              { icon:"📞", label:"Support", arrow:true },
+            ].map((item,i)=>(
+              <div key={i} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:12, padding:"14px 16px", marginBottom:8, display:"flex", alignItems:"center", gap:12, cursor:"pointer" }}>
+                <span style={{ fontSize:18 }}>{item.icon}</span>
+                <span style={{ flex:1, color:C.text, fontSize:14 }}>{item.label}</span>
+                {item.arrow && <span style={{ color:C.muted }}>›</span>}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* BOTTOM NAV */}
+      <div style={{ position:"fixed", bottom:0, left:"50%", transform:"translateX(-50%)", width:"100%", maxWidth:430, background:C.surface, borderTop:`1px solid ${C.border}`, display:"flex", padding:"8px 0 14px", zIndex:50 }}>
+        {COMP_NAV.map(n=>(
+          <button key={n.id} onClick={()=>setPage(n.id)} style={{ flex:1, background:"none", border:"none", cursor:"pointer", display:"flex", flexDirection:"column", alignItems:"center", gap:3 }}>
+            <span style={{ fontSize:19, filter:page===n.id?"none":"grayscale(1) opacity(.45)", transition:"all .15s" }}>{n.icon}</span>
+            <span style={{ fontSize:9, color:page===n.id?C.accent:C.muted, transition:"color .15s", fontFamily:"inherit" }}>{n.label}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ─── ROOT ───────────────────────────────────────────────────── */
+function AfriLearnMain() {
+  const [user, setUser] = useState(null);
+  if(!user) return <Onboarding onDone={setUser} />;
+  if(user.type==="company") return <CompanyApp user={user} />;
+  return <StudentApp user={user} />;
+}
+
+/* ═══════════════ ADMIN PANEL ═══════════════ */
+
+
+/* ── TOKENS ── */
+const CA = {
+  bg:       "#050709",
+  surface:  "#0A0D12",
+  card:     "#0F1318",
+  border:   "#181E2A",
+  border2:  "#1E2736",
+  accent:   "#F6A732",
+  accentDim:"#F6A73218",
+  green:    "#00C97A",
+  greenDim: "#00C97A18",
+  blue:     "#4A8FF5",
+  blueDim:  "#4A8FF518",
+  red:      "#F0485A",
+  redDim:   "#F0485A18",
+  yellow:   "#F5C518",
+  yellowDim:"#F5C51818",
+  purple:   "#9B72F8",
+  purpleDim:"#9B72F818",
+  text:     "#E8EDF8",
+  sub:      "#7A8BA8",
+  muted:    "#3D4D63",
+};
+
+/* ── MICRO COMPONENTS ── */
+const Tag = ({ label, color=CA.accent }) => (
+  <span style={{ background:`${color}22`, color, border:`1px solid ${color}33`, borderRadius:5, padding:"2px 8px", fontSize:10, fontWeight:700, letterSpacing:.5, whiteSpace:"nowrap" }}>{label}</span>
+);
+
+const Stat = ({ icon, value, label, color=CA.accent, delta }) => (
+  <div style={{ background:CA.card, border:`1px solid ${CA.border}`, borderRadius:14, padding:"16px 14px", borderTop:`3px solid ${color}` }}>
+    <div style={{ fontSize:20, marginBottom:8 }}>{icon}</div>
+    <div style={{ color, fontSize:24, fontWeight:900, letterSpacing:-1 }}>{value}</div>
+    <div style={{ color:CA.sub, fontSize:11, marginTop:3 }}>{label}</div>
+    {delta && <div style={{ color:delta>0?CA.green:CA.red, fontSize:10, marginTop:4 }}>{delta>0?"↑":"↓"} {Math.abs(delta)}% ce mois</div>}
+  </div>
+);
+
+const Avatar = ({ name="?", size=36, color=CA.blue }) => (
+  <div style={{ width:size, height:size, borderRadius:size*.28, background:`${color}25`, color, display:"flex", alignItems:"center", justifyContent:"center", fontWeight:900, fontSize:size*.4, flexShrink:0, border:`1.5px solid ${color}40` }}>
+    {name[0].toUpperCase()}
+  </div>
+);
+
+const Btn = ({ children, onClick, color=CA.accent, bg, small, danger, ghost }) => (
+  <button onClick={onClick} style={{
+    background: danger?CA.red : ghost?"transparent" : bg||color,
+    color: ghost?CA.sub : danger?"#fff" : "#050709",
+    border: ghost?`1px solid ${CA.border}`:"none",
+    borderRadius:9, padding: small?"5px 12px":"9px 16px",
+    fontSize: small?11:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit",
+    whiteSpace:"nowrap",
+  }}>{children}</button>
+);
+
+const Modal = ({ title, children, onClose }) => (
+  <div style={{ position:"fixed", inset:0, background:"#000000DD", zIndex:999, display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}>
+    <div style={{ background:CA.card, border:`1px solid ${CA.border2}`, borderRadius:18, padding:"22px 20px", width:"100%", maxWidth:420, maxHeight:"85vh", overflowY:"auto" }}>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:18 }}>
+        <h3 style={{ color:CA.text, fontSize:16, fontWeight:900 }}>{title}</h3>
+        <button onClick={onClose} style={{ background:"none", border:"none", color:CA.sub, fontSize:22, cursor:"pointer", lineHeight:1 }}>×</button>
+      </div>
+      {children}
+    </div>
+  </div>
+);
+
+/* ── MOCK DATA ── */
+const MOCK_USERS = [
+  { id:1, name:"Kofi Asante", email:"kofi@mail.com", type:"student", status:"active", joined:"12 Mai 2026", country:"Bénin", field:"Droit", reports:0, verified:true },
+  { id:2, name:"Aminata Diallo", email:"aminata@mail.com", type:"student", status:"active", joined:"10 Mai 2026", country:"Sénégal", field:"Économie", reports:0, verified:true },
+  { id:3, name:"Orange Digital Center", email:"rh@orange.bj", type:"company", status:"active", joined:"5 Mai 2026", country:"Bénin", field:"Tech", reports:0, verified:true },
+  { id:4, name:"Seydou Traoré", email:"seydou@mail.com", type:"student", status:"suspended", joined:"8 Mai 2026", country:"Mali", field:"Informatique", reports:3, verified:true },
+  { id:5, name:"Global Fake Corp", email:"fake@corp.com", type:"company", status:"pending", joined:"29 Mai 2026", country:"Inconnu", field:"Inconnu", reports:5, verified:false },
+  { id:6, name:"Fatou Camara", email:"fatou@mail.com", type:"student", status:"pending_verification", joined:"30 Mai 2026", country:"Sénégal", field:"Médecine", reports:0, verified:false },
+];
+
+const MOCK_COMPLAINTS = [
+  { id:1, from:"Kofi A.", against:"Seydou T.", type:"Contenu inapproprié", date:"28 Mai 2026", status:"open", desc:"Publication d'un contenu trompeur sur les cours.", priority:"high" },
+  { id:2, from:"Aminata D.", against:"Global Fake Corp", type:"Fausse offre de stage", date:"29 Mai 2026", status:"open", desc:"Cette entreprise demande de l'argent aux candidats.", priority:"critical" },
+  { id:3, from:"Système", against:"Seydou T.", type:"Spam détecté", date:"27 Mai 2026", status:"resolved", desc:"Envoi massif de messages privés non sollicités.", priority:"medium" },
+  { id:4, from:"Support auto", against:"Global Fake Corp", type:"Document falsifié", date:"30 Mai 2026", status:"open", desc:"RCCM soumis ne correspond pas à une entreprise réelle.", priority:"critical" },
+];
+
+const MOCK_VERIF = [
+  { id:1, name:"Fatou Camara", type:"student", docs:["Carte étudiant","Selfie CNI"], submitted:"30 Mai 2026", status:"pending" },
+  { id:2, name:"Africa Agri Tech", type:"company", docs:["RCCM","Logo"], submitted:"29 Mai 2026", status:"pending" },
+  { id:3, name:"Luc Mensah", type:"student", docs:["Fiche préinscription","Selfie CNI"], submitted:"28 Mai 2026", status:"pending" },
+];
+
+const MOCK_UPDATES = [
+  { id:1, version:"v1.2.0", title:"Amélioration messagerie", desc:"Chiffrement renforcé, envoi vidéos jusqu'à 50MB", date:"25 Mai 2026", status:"deployed" },
+  { id:2, version:"v1.3.0", title:"Nouveau module Entrepreneur", desc:"Business plan IA + mise en relation investisseurs", date:"—", status:"draft" },
+  { id:3, version:"v1.4.0", title:"Mode hors-ligne", desc:"Accès aux cours téléchargés sans connexion internet", date:"—", status:"planned" },
+];
+
+const MOCK_REVENUE = [
+  { month:"Jan", amount:0 },{ month:"Fév", amount:0 },{ month:"Mar", amount:120000 },
+  { month:"Avr", amount:340000 },{ month:"Mai", amount:780000 },
+];
+
+/* ── SECTIONS ── */
+function Overview() {
+  return (
+    <div style={{ padding:"0 0 20px" }}>
+      {/* Hero */}
+      <div style={{ background:`linear-gradient(135deg, #050709 0%, #0A1020 100%)`, padding:"24px 18px 20px", position:"relative", overflow:"hidden", borderBottom:`1px solid ${CA.border}` }}>
+        <div style={{ position:"absolute", top:-60, right:-60, width:200, height:200, borderRadius:"50%", background:`radial-gradient(circle, ${CA.accentDim}, transparent 70%)` }} />
+        <div style={{ position:"absolute", bottom:-40, left:-40, width:140, height:140, borderRadius:"50%", background:`radial-gradient(circle, ${CA.blueDim}, transparent 70%)` }} />
+        <div style={{ position:"relative" }}>
+          <div style={{ display:"inline-flex", gap:6, alignItems:"center", background:CA.accentDim, border:`1px solid ${CA.accent}33`, borderRadius:20, padding:"3px 12px", marginBottom:14 }}>
+            <span style={{ width:6, height:6, borderRadius:"50%", background:CA.green, display:"inline-block" }} />
+            <span style={{ color:CA.accent, fontSize:11, fontWeight:700, letterSpacing:.8 }}>PANNEAU FONDATEUR · ACCÈS TOTAL</span>
+          </div>
+          <h1 style={{ color:CA.text, fontSize:26, fontWeight:900, letterSpacing:-1, marginBottom:4 }}>Bonjour, Thomas 👑</h1>
+          <p style={{ color:CA.sub, fontSize:13 }}>AfriLearn est <span style={{ color:CA.green, fontWeight:700 }}>en ligne</span> · 30 Mai 2026 · 14:32</p>
+        </div>
+      </div>
+
+      <div style={{ padding:"18px 16px 0" }}>
+        {/* KPI Grid */}
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:20 }}>
+          <Stat icon="🎓" value="12,847" label="Étudiants inscrits" color={CA.blue} delta={18} />
+          <Stat icon="🏢" value="213" label="Entreprises" color={CA.green} delta={9} />
+          <Stat icon="💼" value="1,204" label="Candidatures" color={CA.accent} delta={31} />
+          <Stat icon="💰" value="780K" label="FCFA ce mois" color={CA.purple} delta={129} />
+        </div>
+
+        {/* Revenue mini chart */}
+        <div style={{ background:CA.card, border:`1px solid ${CA.border}`, borderRadius:14, padding:"16px", marginBottom:16 }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 }}>
+            <div>
+              <div style={{ color:CA.text, fontWeight:700, fontSize:14 }}>Revenus mensuels</div>
+              <div style={{ color:CA.sub, fontSize:11 }}>Abonnements + Offres entreprises</div>
+            </div>
+            <Tag label="+129% MoM" color={CA.green} />
+          </div>
+          <div style={{ display:"flex", gap:6, alignItems:"flex-end", height:60 }}>
+            {MOCK_REVENUE.map((r,i)=>{
+              const max = Math.max(...MOCK_REVENUE.map(x=>x.amount))||1;
+              const h = r.amount ? Math.max(6, (r.amount/max)*54) : 4;
+              return (
+                <div key={i} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:4 }}>
+                  <div style={{ width:"100%", height:h, borderRadius:4, background: i===MOCK_REVENUE.length-1?CA.accent:`${CA.accent}44`, transition:"height .3s" }} />
+                  <div style={{ color:CA.muted, fontSize:9 }}>{r.month}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Alerts */}
+        <div style={{ background:CA.redDim, border:`1px solid ${CA.red}33`, borderRadius:12, padding:"12px 14px", marginBottom:10, display:"flex", gap:10, alignItems:"flex-start" }}>
+          <span style={{ fontSize:16 }}>🚨</span>
+          <div>
+            <div style={{ color:CA.red, fontWeight:700, fontSize:13 }}>2 plaintes critiques en attente</div>
+            <div style={{ color:CA.sub, fontSize:11, marginTop:2 }}>Fausse entreprise détectée + document falsifié</div>
+          </div>
+        </div>
+        <div style={{ background:CA.yellowDim, border:`1px solid ${CA.yellow}33`, borderRadius:12, padding:"12px 14px", marginBottom:10, display:"flex", gap:10, alignItems:"flex-start" }}>
+          <span style={{ fontSize:16 }}>⏳</span>
+          <div>
+            <div style={{ color:CA.yellow, fontWeight:700, fontSize:13 }}>3 vérifications en attente</div>
+            <div style={{ color:CA.sub, fontSize:11, marginTop:2 }}>Nouveaux comptes à valider</div>
+          </div>
+        </div>
+        <div style={{ background:CA.greenDim, border:`1px solid ${CA.green}33`, borderRadius:12, padding:"12px 14px", marginBottom:20, display:"flex", gap:10, alignItems:"flex-start" }}>
+          <span style={{ fontSize:16 }}>✅</span>
+          <div>
+            <div style={{ color:CA.green, fontWeight:700, fontSize:13 }}>Serveurs opérationnels à 99.8%</div>
+            <div style={{ color:CA.sub, fontSize:11, marginTop:2 }}>Uptime ce mois · 0 incident majeur</div>
+          </div>
+        </div>
+
+        {/* Quick actions */}
+        <h3 style={{ color:CA.sub, fontSize:11, letterSpacing:.8, textTransform:"uppercase", marginBottom:10 }}>Actions rapides</h3>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+          {[
+            { icon:"🔔", label:"Envoyer une notif globale", color:CA.blue },
+            { icon:"📢", label:"Publier une annonce", color:CA.purple },
+            { icon:"🛠️", label:"Mode maintenance", color:CA.yellow },
+            { icon:"📊", label:"Export rapport PDF", color:CA.green },
+          ].map((a,i)=>(
+            <div key={i} style={{ background:CA.card, border:`1px solid ${CA.border}`, borderRadius:12, padding:"13px 12px", cursor:"pointer", display:"flex", gap:10, alignItems:"center" }}>
+              <span style={{ fontSize:20 }}>{a.icon}</span>
+              <span style={{ color:CA.text, fontSize:12, fontWeight:600, lineHeight:1.3 }}>{a.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function UsersSection() {
+  const [users, setUsers] = useState(MOCK_USERS);
+  const [filter, setFilter] = useState("Tous");
+  const [selected, setSelected] = useState(null);
+  const [search, setSearch] = useState("");
+  const [modal, setModal] = useState(null); // {user, action}
+
+  const statusColor = { active:CA.green, suspended:CA.red, pending:CA.yellow, pending_verification:CA.blue };
+  const statusLabel = { active:"Actif", suspended:"Suspendu", pending:"En attente", pending_verification:"Vérif. en cours" };
+
+  const filtered = users.filter(u => {
+    if(filter==="Étudiants") return u.type==="student";
+    if(filter==="Entreprises") return u.type==="company";
+    if(filter==="Suspendus") return u.status==="suspended";
+    if(filter==="En attente") return u.status==="pending"||u.status==="pending_verification";
+    return true;
+  }).filter(u => u.name.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase()));
+
+  const doAction = (userId, action) => {
+    setUsers(prev => prev.map(u => u.id===userId ? {
+      ...u,
+      status: action==="suspend" ? "suspended" : action==="activate" ? "active" : u.status,
+      verified: action==="verify" ? true : action==="ban" ? false : u.verified,
+    } : u));
+    setModal(null);
+  };
+
+  return (
+    <div style={{ padding:"14px" }}>
+      {modal && (
+        <Modal title={`${modal.action==="suspend"?"Suspendre":modal.action==="ban"?"Bannir":modal.action==="activate"?"Réactiver":"Vérifier"} ce compte`} onClose={()=>setModal(null)}>
+          <div style={{ background:CA.surface, borderRadius:10, padding:"12px 14px", marginBottom:16 }}>
+            <div style={{ color:CA.text, fontWeight:700 }}>{modal.user.name}</div>
+            <div style={{ color:CA.sub, fontSize:12 }}>{modal.user.email} · {modal.user.type==="student"?"Étudiant":"Entreprise"}</div>
+          </div>
+          {modal.action==="suspend" && <>
+            <label style={{ color:CA.sub, fontSize:11, display:"block", marginBottom:6, textTransform:"uppercase", letterSpacing:.8 }}>Raison de la suspension</label>
+            <select style={{ width:"100%", background:CA.surface, border:`1px solid ${CA.border}`, borderRadius:9, padding:"10px 12px", color:CA.text, fontSize:13, outline:"none", fontFamily:"inherit", marginBottom:14 }}>
+              <option>Violation des CGU</option>
+              <option>Contenu inapproprié</option>
+              <option>Faux documents</option>
+              <option>Spam / Arnaque</option>
+              <option>Plaintes multiples</option>
+            </select>
+            <label style={{ color:CA.sub, fontSize:11, display:"block", marginBottom:6, textTransform:"uppercase", letterSpacing:.8 }}>Durée</label>
+            <select style={{ width:"100%", background:CA.surface, border:`1px solid ${CA.border}`, borderRadius:9, padding:"10px 12px", color:CA.text, fontSize:13, outline:"none", fontFamily:"inherit", marginBottom:16 }}>
+              <option>7 jours</option><option>30 jours</option><option>90 jours</option><option>Permanente</option>
+            </select>
+          </>}
+          {modal.action==="ban" && <p style={{ color:CA.red, fontSize:13, lineHeight:1.6, marginBottom:16 }}>⚠️ Cette action est irréversible. Le compte sera définitivement supprimé et l'email blacklisté.</p>}
+          {modal.action==="activate" && <p style={{ color:CA.green, fontSize:13, lineHeight:1.6, marginBottom:16 }}>Le compte sera réactivé et l'utilisateur pourra se reconnecter immédiatement.</p>}
+          {modal.action==="verify" && <p style={{ color:CA.blue, fontSize:13, lineHeight:1.6, marginBottom:16 }}>Vous confirmez avoir vérifié manuellement les documents de cet utilisateur.</p>}
+          <div style={{ display:"flex", gap:8 }}>
+            <Btn onClick={()=>doAction(modal.user.id, modal.action)} color={modal.action==="ban"?CA.red:modal.action==="suspend"?CA.yellow:modal.action==="verify"?CA.blue:CA.green} bg={modal.action==="ban"?CA.red:modal.action==="suspend"?CA.yellow:modal.action==="verify"?CA.blue:CA.green}>
+              {modal.action==="suspend"?"Suspendre":modal.action==="ban"?"Bannir définitivement":modal.action==="activate"?"Réactiver":"Valider"}
+            </Btn>
+            <Btn ghost onClick={()=>setModal(null)}>Annuler</Btn>
+          </div>
+        </Modal>
+      )}
+
+      <div style={{ display:"flex", gap:8, marginBottom:12 }}>
+        <div style={{ flex:1, background:CA.surface, border:`1px solid ${CA.border}`, borderRadius:9, padding:"8px 12px", display:"flex", gap:8, alignItems:"center" }}>
+          <span style={{ color:CA.muted }}>🔍</span>
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Rechercher..." style={{ flex:1, background:"transparent", border:"none", color:CA.text, fontSize:13, outline:"none", fontFamily:"inherit" }} />
+        </div>
+      </div>
+
+      <div style={{ display:"flex", gap:7, overflowX:"auto", marginBottom:14, paddingBottom:4 }}>
+        {["Tous","Étudiants","Entreprises","Suspendus","En attente"].map(f=>(
+          <button key={f} onClick={()=>setFilter(f)} style={{ background:filter===f?CA.accent:CA.card, color:filter===f?"#050709":CA.sub, border:`1px solid ${filter===f?CA.accent:CA.border}`, borderRadius:20, padding:"5px 13px", fontSize:11, cursor:"pointer", whiteSpace:"nowrap", fontWeight:filter===f?700:400, fontFamily:"inherit" }}>{f}</button>
+        ))}
+      </div>
+
+      <div style={{ color:CA.muted, fontSize:11, marginBottom:10 }}>{filtered.length} résultat{filtered.length>1?"s":""}</div>
+
+      {filtered.map(u=>(
+        <div key={u.id} style={{ background:CA.card, border:`1px solid ${selected===u.id?CA.accent:CA.border}`, borderRadius:13, padding:"13px", marginBottom:9, cursor:"pointer" }} onClick={()=>setSelected(selected===u.id?null:u.id)}>
+          <div style={{ display:"flex", gap:10, alignItems:"center" }}>
+            <Avatar name={u.name[0]} size={40} color={u.type==="company"?CA.green:CA.blue} />
+            <div style={{ flex:1, minWidth:0 }}>
+              <div style={{ display:"flex", gap:6, alignItems:"center", flexWrap:"wrap" }}>
+                <span style={{ color:CA.text, fontWeight:700, fontSize:14 }}>{u.name}</span>
+                {u.verified && <Tag label="✓ Vérifié" color={CA.green} />}
+                {u.reports>0 && <Tag label={`${u.reports} signalement${u.reports>1?"s":""}`} color={CA.red} />}
+              </div>
+              <div style={{ color:CA.sub, fontSize:11, marginTop:2 }}>{u.email} · {u.country}</div>
+              <div style={{ display:"flex", gap:6, marginTop:4, alignItems:"center" }}>
+                <Tag label={u.type==="student"?"Étudiant":"Entreprise"} color={u.type==="company"?CA.green:CA.blue} />
+                <Tag label={statusLabel[u.status]} color={statusColor[u.status]} />
+              </div>
+            </div>
+            <span style={{ color:CA.muted, fontSize:16 }}>{selected===u.id?"▲":"▼"}</span>
+          </div>
+
+          {selected===u.id && (
+            <div style={{ marginTop:12, paddingTop:12, borderTop:`1px solid ${CA.border}` }}>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6, marginBottom:12 }}>
+                {[["📅 Inscrit",u.joined],["🌍 Pays",u.country],["📚 Domaine",u.field],["🆔 ID",`#${u.id.toString().padStart(5,"0")}`]].map(([k,v],i)=>(
+                  <div key={i} style={{ background:CA.surface, borderRadius:8, padding:"8px 10px" }}>
+                    <div style={{ color:CA.muted, fontSize:10 }}>{k}</div>
+                    <div style={{ color:CA.text, fontSize:12, fontWeight:600 }}>{v}</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ display:"flex", gap:7, flexWrap:"wrap" }}>
+                {u.status==="active" && <Btn small onClick={()=>setModal({user:u,action:"suspend"})} color={CA.yellow} bg={CA.yellow}>⏸ Suspendre</Btn>}
+                {u.status==="suspended" && <Btn small onClick={()=>setModal({user:u,action:"activate"})} color={CA.green} bg={CA.green}>▶ Réactiver</Btn>}
+                {!u.verified && <Btn small onClick={()=>setModal({user:u,action:"verify"})} color={CA.blue} bg={CA.blue}>✓ Valider</Btn>}
+                <Btn small ghost onClick={()=>alert("Message envoyé à "+u.name)}>✉ Contacter</Btn>
+                <Btn small danger onClick={()=>setModal({user:u,action:"ban"})}>🚫 Bannir</Btn>
+              </div>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ComplaintsSection() {
+  const [complaints, setComplaints] = useState(MOCK_COMPLAINTS);
+  const [filter, setFilter] = useState("Toutes");
+
+  const priorityColor = { critical:CA.red, high:CA.yellow, medium:CA.blue };
+  const filtered = complaints.filter(c => filter==="Toutes" ? true : filter==="Ouvertes" ? c.status==="open" : c.status==="resolved");
+
+  const resolve = (id) => setComplaints(p=>p.map(c=>c.id===id?{...c,status:"resolved"}:c));
+
+  return (
+    <div style={{ padding:"14px" }}>
+      <div style={{ display:"flex", gap:7, marginBottom:14 }}>
+        {["Toutes","Ouvertes","Résolues"].map(f=>(
+          <button key={f} onClick={()=>setFilter(f)} style={{ background:filter===f?CA.accent:CA.card, color:filter===f?"#050709":CA.sub, border:`1px solid ${filter===f?CA.accent:CA.border}`, borderRadius:20, padding:"5px 13px", fontSize:11, cursor:"pointer", fontWeight:filter===f?700:400, fontFamily:"inherit" }}>{f}</button>
+        ))}
+      </div>
+
+      {filtered.map(c=>(
+        <div key={c.id} style={{ background:CA.card, border:`1px solid ${c.status==="open"&&c.priority==="critical"?CA.red:CA.border}`, borderRadius:13, padding:"14px", marginBottom:10, borderLeft:`4px solid ${priorityColor[c.priority]}` }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:8 }}>
+            <div style={{ flex:1 }}>
+              <div style={{ display:"flex", gap:6, marginBottom:5, flexWrap:"wrap" }}>
+                <Tag label={c.priority==="critical"?"🚨 CRITIQUE":c.priority==="high"?"⚠️ Haute":"📋 Normale"} color={priorityColor[c.priority]} />
+                <Tag label={c.status==="open"?"Ouvert":"Résolu"} color={c.status==="open"?CA.red:CA.green} />
+              </div>
+              <div style={{ color:CA.text, fontWeight:700, fontSize:14 }}>{c.type}</div>
+              <div style={{ color:CA.sub, fontSize:11, marginTop:2 }}>De : {c.from} → Contre : <span style={{ color:CA.red }}>{c.against}</span></div>
+            </div>
+            <span style={{ color:CA.muted, fontSize:10, marginLeft:8, whiteSpace:"nowrap" }}>{c.date}</span>
+          </div>
+          <p style={{ color:CA.sub, fontSize:12, lineHeight:1.5, marginBottom:12 }}>{c.desc}</p>
+          {c.status==="open" && (
+            <div style={{ display:"flex", gap:7 }}>
+              <Btn small color={CA.green} bg={CA.green} onClick={()=>resolve(c.id)}>✅ Résoudre</Btn>
+              <Btn small color={CA.red} bg={CA.red} onClick={()=>alert("Action de sanction lancée")}>🚫 Sanctionner</Btn>
+              <Btn small ghost onClick={()=>alert("Dossier transmis")}>📁 Voir dossier</Btn>
+            </div>
+          )}
+          {c.status==="resolved" && <Tag label="✓ Traitée" color={CA.green} />}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function VerificationSection() {
+  const [items, setItems] = useState(MOCK_VERIF);
+  const [viewing, setViewing] = useState(null);
+
+  const approve = (id) => { setItems(p=>p.filter(x=>x.id!==id)); setViewing(null); };
+  const reject = (id) => { setItems(p=>p.filter(x=>x.id!==id)); setViewing(null); };
+
+  return (
+    <div style={{ padding:"14px" }}>
+      {viewing && (
+        <Modal title="Vérification de compte" onClose={()=>setViewing(null)}>
+          <div style={{ background:CA.surface, borderRadius:10, padding:"12px 14px", marginBottom:16 }}>
+            <div style={{ color:CA.text, fontWeight:700 }}>{viewing.name}</div>
+            <div style={{ color:CA.sub, fontSize:12 }}>{viewing.type==="student"?"Étudiant":"Entreprise"} · Soumis le {viewing.submitted}</div>
+          </div>
+          <div style={{ marginBottom:16 }}>
+            <div style={{ color:CA.sub, fontSize:11, textTransform:"uppercase", letterSpacing:.8, marginBottom:8 }}>Documents soumis</div>
+            {viewing.docs.map((d,i)=>(
+              <div key={i} style={{ background:CA.surface, border:`1px solid ${CA.border}`, borderRadius:9, padding:"10px 12px", marginBottom:7, display:"flex", gap:10, alignItems:"center" }}>
+                <span style={{ fontSize:18 }}>📄</span>
+                <span style={{ color:CA.text, fontSize:13, flex:1 }}>{d}</span>
+                <Btn small ghost onClick={()=>alert("Visualisation du document : "+d)}>Voir</Btn>
+              </div>
+            ))}
+          </div>
+          <div style={{ background:CA.yellowDim, border:`1px solid ${CA.yellow}33`, borderRadius:9, padding:"10px 12px", marginBottom:16 }}>
+            <div style={{ color:CA.yellow, fontSize:12, fontWeight:700 }}>⚠️ Vérifiez soigneusement</div>
+            <div style={{ color:CA.sub, fontSize:11, marginTop:3, lineHeight:1.5 }}>Comparez le document avec le selfie. Vérifiez la validité et l'authenticité. En cas de doute, refusez.</div>
+          </div>
+          <div style={{ display:"flex", gap:8 }}>
+            <Btn color={CA.green} bg={CA.green} onClick={()=>approve(viewing.id)}>✅ Approuver</Btn>
+            <Btn danger onClick={()=>reject(viewing.id)}>❌ Refuser</Btn>
+            <Btn ghost onClick={()=>setViewing(null)}>Plus tard</Btn>
+          </div>
+        </Modal>
+      )}
+
+      <div style={{ background:CA.yellowDim, border:`1px solid ${CA.yellow}33`, borderRadius:11, padding:"11px 14px", marginBottom:16, display:"flex", gap:10 }}>
+        <span>⏳</span>
+        <div style={{ color:CA.yellow, fontSize:13, fontWeight:700 }}>{items.length} vérification{items.length>1?"s":""} en attente</div>
+      </div>
+
+      {items.length===0 && (
+        <div style={{ textAlign:"center", padding:"40px 20px", color:CA.sub }}>
+          <div style={{ fontSize:40, marginBottom:12 }}>✅</div>
+          <div style={{ fontSize:14 }}>Aucune vérification en attente</div>
+        </div>
+      )}
+
+      {items.map(item=>(
+        <div key={item.id} style={{ background:CA.card, border:`1px solid ${CA.border}`, borderRadius:13, padding:"14px", marginBottom:10 }}>
+          <div style={{ display:"flex", gap:10, alignItems:"center", marginBottom:10 }}>
+            <Avatar name={item.name[0]} size={42} color={item.type==="company"?CA.green:CA.blue} />
+            <div style={{ flex:1 }}>
+              <div style={{ color:CA.text, fontWeight:700, fontSize:14 }}>{item.name}</div>
+              <div style={{ color:CA.sub, fontSize:11 }}>{item.type==="student"?"Étudiant":"Entreprise"} · {item.submitted}</div>
+              <div style={{ color:CA.muted, fontSize:11, marginTop:3 }}>{item.docs.length} document{item.docs.length>1?"s":""} : {item.docs.join(", ")}</div>
+            </div>
+          </div>
+          <Btn color={CA.blue} bg={CA.blue} small onClick={()=>setViewing(item)}>🔍 Examiner les documents</Btn>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function UpdatesSection() {
+  const [updates, setUpdates] = useState(MOCK_UPDATES);
+  const [showNew, setShowNew] = useState(false);
+  const [form, setForm] = useState({ version:"", title:"", desc:"" });
+
+  const statusColor = { deployed:CA.green, draft:CA.yellow, planned:CA.blue };
+  const statusLabel = { deployed:"Déployée", draft:"Brouillon", planned:"Planifiée" };
+
+  const add = () => {
+    if(!form.version||!form.title) return;
+    setUpdates(p=>[...p, { id:Date.now(), ...form, date:"—", status:"draft" }]);
+    setForm({ version:"", title:"", desc:"" });
+    setShowNew(false);
+  };
+
+  return (
+    <div style={{ padding:"14px" }}>
+      {showNew && (
+        <Modal title="Nouvelle mise à jour" onClose={()=>setShowNew(false)}>
+          {[["Version","v1.5.0","version"],["Titre","Intitulé de la mise à jour","title"],["Description","Détails des changements...","desc"]].map(([l,p,k])=>(
+            <div key={k} style={{ marginBottom:12 }}>
+              <label style={{ color:CA.sub, fontSize:11, display:"block", marginBottom:5, textTransform:"uppercase", letterSpacing:.8 }}>{l}</label>
+              <input placeholder={p} value={form[k]} onChange={e=>setForm(f=>({...f,[k]:e.target.value}))}
+                style={{ width:"100%", background:CA.surface, border:`1px solid ${CA.border}`, borderRadius:9, padding:"10px 12px", color:CA.text, fontSize:13, outline:"none", fontFamily:"inherit", boxSizing:"border-box" }} />
+            </div>
+          ))}
+          <div style={{ display:"flex", gap:8, marginTop:4 }}>
+            <Btn onClick={add} disabled={!form.version||!form.title}>Créer</Btn>
+            <Btn ghost onClick={()=>setShowNew(false)}>Annuler</Btn>
+          </div>
+        </Modal>
+      )}
+
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 }}>
+        <h3 style={{ color:CA.text, fontSize:16, fontWeight:900 }}>Mises à jour</h3>
+        <Btn small onClick={()=>setShowNew(true)}>+ Nouvelle</Btn>
+      </div>
+
+      {/* Version actuelle */}
+      <div style={{ background:`linear-gradient(135deg, ${CA.greenDim}, ${CA.blueDim})`, border:`1px solid ${CA.green}33`, borderRadius:13, padding:"14px", marginBottom:16 }}>
+        <div style={{ color:CA.sub, fontSize:11, marginBottom:3 }}>VERSION EN PRODUCTION</div>
+        <div style={{ color:CA.text, fontWeight:900, fontSize:20 }}>v1.2.0</div>
+        <div style={{ color:CA.sub, fontSize:12, marginTop:2 }}>Déployée le 25 Mai 2026 · Stable</div>
+        <div style={{ display:"flex", gap:6, marginTop:10 }}>
+          {[["🕐 Uptime","99.8%"],["👥 Utilisateurs actifs","847"],["⚡ Latence moy.","142ms"]].map(([l,v],i)=>(
+            <div key={i} style={{ flex:1, background:"#ffffff0A", borderRadius:8, padding:"7px 8px", textAlign:"center" }}>
+              <div style={{ color:CA.text, fontWeight:700, fontSize:13 }}>{v}</div>
+              <div style={{ color:CA.muted, fontSize:9, marginTop:2 }}>{l}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {updates.map(u=>(
+        <div key={u.id} style={{ background:CA.card, border:`1px solid ${CA.border}`, borderRadius:13, padding:"14px", marginBottom:9 }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:6 }}>
+            <div>
+              <div style={{ display:"flex", gap:6, alignItems:"center", marginBottom:4 }}>
+                <span style={{ color:CA.accent, fontWeight:900, fontSize:13 }}>{u.version}</span>
+                <Tag label={statusLabel[u.status]} color={statusColor[u.status]} />
+              </div>
+              <div style={{ color:CA.text, fontWeight:700, fontSize:14 }}>{u.title}</div>
+            </div>
+            {u.date!=="—" && <span style={{ color:CA.muted, fontSize:10 }}>{u.date}</span>}
+          </div>
+          <p style={{ color:CA.sub, fontSize:12, lineHeight:1.5, marginBottom:12 }}>{u.desc}</p>
+          <div style={{ display:"flex", gap:7 }}>
+            {u.status==="draft" && <Btn small color={CA.green} bg={CA.green} onClick={()=>setUpdates(p=>p.map(x=>x.id===u.id?{...x,status:"deployed",date:"30 Mai 2026"}:x))}>🚀 Déployer</Btn>}
+            {u.status==="planned" && <Btn small color={CA.accent} bg={CA.accent} onClick={()=>setUpdates(p=>p.map(x=>x.id===u.id?{...x,status:"draft"}:x))}>✏️ Rédiger</Btn>}
+            <Btn small ghost onClick={()=>alert("Notes de version éditées")}>📝 Éditer</Btn>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function AnalyticsSection() {
+  const metrics = [
+    { label:"Taux de rétention", value:"73%", color:CA.green, desc:"Utilisateurs actifs après 30j" },
+    { label:"Conversion freemium→premium", value:"8.4%", color:CA.accent, desc:"Objectif : 12%" },
+    { label:"Candidatures déposées", value:"1,204", color:CA.blue, desc:"Ce mois" },
+    { label:"Stages pourvus", value:"87", color:CA.purple, desc:"Via AfriLearn" },
+    { label:"Taux de comptes validés", value:"91%", color:CA.green, desc:"Sur les demandes reçues" },
+    { label:"Plaintes résolues", value:"94%", color:CA.green, desc:"Taux de résolution" },
+  ];
+
+  const countries = [
+    { name:"Bénin", users:3841, pct:30 },
+    { name:"Sénégal", users:2905, pct:22 },
+    { name:"Côte d'Ivoire", users:2318, pct:18 },
+    { name:"Mali", users:1669, pct:13 },
+    { name:"Togo", users:1155, pct:9 },
+    { name:"Autres", users:959, pct:8 },
+  ];
+
+  return (
+    <div style={{ padding:"14px" }}>
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:18 }}>
+        {metrics.map((m,i)=>(
+          <div key={i} style={{ background:CA.card, border:`1px solid ${CA.border}`, borderRadius:13, padding:"14px 12px" }}>
+            <div style={{ color:m.color, fontSize:22, fontWeight:900, letterSpacing:-1 }}>{m.value}</div>
+            <div style={{ color:CA.text, fontSize:12, fontWeight:700, marginTop:3 }}>{m.label}</div>
+            <div style={{ color:CA.muted, fontSize:10, marginTop:3 }}>{m.desc}</div>
+          </div>
+        ))}
+      </div>
+
+      <h3 style={{ color:CA.text, fontSize:15, fontWeight:700, marginBottom:12 }}>Répartition par pays</h3>
+      <div style={{ background:CA.card, border:`1px solid ${CA.border}`, borderRadius:13, padding:"14px", marginBottom:18 }}>
+        {countries.map((c,i)=>(
+          <div key={i} style={{ marginBottom:12 }}>
+            <div style={{ display:"flex", justifyContent:"space-between", marginBottom:5 }}>
+              <span style={{ color:CA.text, fontSize:13 }}>🌍 {c.name}</span>
+              <span style={{ color:CA.sub, fontSize:12 }}>{c.users.toLocaleString()} · {c.pct}%</span>
+            </div>
+            <div style={{ background:CA.surface, borderRadius:4, height:6, overflow:"hidden" }}>
+              <div style={{ width:`${c.pct}%`, height:"100%", background:`linear-gradient(90deg, ${CA.accent}, ${CA.blue})`, borderRadius:4 }} />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <h3 style={{ color:CA.text, fontSize:15, fontWeight:700, marginBottom:12 }}>Revenus par source</h3>
+      <div style={{ background:CA.card, border:`1px solid ${CA.border}`, borderRadius:13, padding:"14px" }}>
+        {[
+          { src:"Abonnements Premium étudiants", amount:"312 000", pct:40, color:CA.accent },
+          { src:"Publication offres entreprises", amount:"234 000", pct:30, color:CA.green },
+          { src:"Pub & partenariats", amount:"156 000", pct:20, color:CA.blue },
+          { src:"Certifications IA", amount:"78 000", pct:10, color:CA.purple },
+        ].map((r,i)=>(
+          <div key={i} style={{ marginBottom:12 }}>
+            <div style={{ display:"flex", justifyContent:"space-between", marginBottom:5 }}>
+              <span style={{ color:CA.text, fontSize:12 }}>{r.src}</span>
+              <span style={{ color:r.color, fontWeight:700, fontSize:12 }}>{r.amount} FCFA</span>
+            </div>
+            <div style={{ background:CA.surface, borderRadius:4, height:6 }}>
+              <div style={{ width:`${r.pct}%`, height:"100%", background:r.color, borderRadius:4 }} />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ── ROOT ── */
+const NAV = [
+  { id:"overview", icon:"📊", label:"Vue d'ensemble" },
+  { id:"users", icon:"👥", label:"Utilisateurs" },
+  { id:"complaints", icon:"🚨", label:"Plaintes" },
+  { id:"verification", icon:"🔍", label:"Vérifs" },
+  { id:"updates", icon:"🚀", label:"Updates" },
+  { id:"analytics", icon:"📈", label:"Analytics" },
+];
+
+function AdminPanel() {
+  const [page, setPage] = useState("overview");
+  const [locked, setLocked] = useState(true);
+  const [pin, setPin] = useState("");
+  const [error, setError] = useState(false);
+
+  const CORRECT_PIN = "1234"; // In production: real auth
+
+  const tryUnlock = () => {
+    if(pin===CORRECT_PIN) { setLocked(false); setError(false); }
+    else { setError(true); setPin(""); setTimeout(()=>setError(false),2000); }
+  };
+
+  if(locked) return (
+    <div style={{ minHeight:"100vh", background:CA.bg, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:32, fontFamily:"Georgia, serif" }}>
+      <style>{`* { box-sizing:border-box; margin:0; padding:0; } ::-webkit-scrollbar { display:none; }`}</style>
+      <div style={{ position:"absolute", top:"20%", left:"50%", transform:"translateX(-50%)", width:300, height:300, borderRadius:"50%", background:`radial-gradient(circle, ${CA.accentDim}, transparent 70%)`, pointerEvents:"none" }} />
+      <div style={{ position:"relative", zIndex:1, textAlign:"center", maxWidth:320 }}>
+        <div style={{ width:64, height:64, borderRadius:18, background:`linear-gradient(135deg, ${CA.accent}, #E8921A)`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:30, margin:"0 auto 20px", boxShadow:`0 0 40px ${CA.accentDim}` }}>👑</div>
+        <h1 style={{ color:CA.text, fontSize:26, fontWeight:900, letterSpacing:-1, marginBottom:6 }}>Panel Fondateur</h1>
+        <p style={{ color:CA.sub, fontSize:13, marginBottom:28, lineHeight:1.5 }}>Accès restreint.<br/>Entrez votre code PIN pour continuer.</p>
+
+        {/* PIN display */}
+        <div style={{ display:"flex", gap:12, justifyContent:"center", marginBottom:24 }}>
+          {[0,1,2,3].map(i=>(
+            <div key={i} style={{ width:14, height:14, borderRadius:"50%", background: i<pin.length ? CA.accent : CA.border, transition:"background .15s", border:`2px solid ${i<pin.length?CA.accent:CA.muted}` }} />
+          ))}
+        </div>
+
+        {/* Numpad */}
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10, maxWidth:220, margin:"0 auto 16px" }}>
+          {["1","2","3","4","5","6","7","8","9","","0","⌫"].map((k,i)=>(
+            <button key={i} onClick={()=>{
+              if(k==="⌫") setPin(p=>p.slice(0,-1));
+              else if(k!==""&&pin.length<4) { const np=pin+k; setPin(np); if(np.length===4) setTimeout(()=>{ if(np===CORRECT_PIN){setLocked(false);}else{setError(true);setPin("");setTimeout(()=>setError(false),1500);}},200); }
+            }} style={{ background:k===""?"transparent":CA.card, border:k===""?"none":`1px solid ${CA.border}`, borderRadius:12, height:52, fontSize:k==="⌫"?18:18, fontWeight:700, color:k===""?"transparent":CA.text, cursor:k===""?"default":"pointer", fontFamily:"inherit", transition:"background .1s" }}>
+              {k}
+            </button>
+          ))}
+        </div>
+        {error && <p style={{ color:CA.red, fontSize:12, marginTop:4 }}>Code incorrect. Réessayez. <span style={{ color:CA.muted }}>(demo: 1234)</span></p>}
+        {!error && <p style={{ color:CA.muted, fontSize:11 }}>Code demo : 1234</p>}
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{ background:CA.bg, minHeight:"100vh", maxWidth:430, margin:"0 auto", fontFamily:"Georgia, serif", overflowX:"hidden" }}>
+      <style>{`* { box-sizing:border-box; margin:0; padding:0; } ::-webkit-scrollbar { display:none; } @keyframes fadeUp { from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)} } input::placeholder,textarea::placeholder{color:${CA.muted}}`}</style>
+
+      {/* TOP BAR */}
+      <div style={{ background:CA.surface, borderBottom:`1px solid ${CA.border}`, padding:"12px 16px", display:"flex", alignItems:"center", justifyContent:"space-between", position:"sticky", top:0, zIndex:50 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+          <div style={{ width:26, height:26, borderRadius:7, background:CA.accent, display:"flex", alignItems:"center", justifyContent:"center", fontSize:14 }}>🎓</div>
+          <span style={{ color:CA.text, fontWeight:900, fontSize:16 }}>Afri<span style={{ color:CA.accent }}>Learn</span></span>
+          <span style={{ background:CA.accentDim, color:CA.accent, border:`1px solid ${CA.accent}33`, borderRadius:5, padding:"1px 7px", fontSize:9, fontWeight:700, letterSpacing:.8 }}>ADMIN</span>
+        </div>
+        <div style={{ display:"flex", gap:6, alignItems:"center" }}>
+          <div style={{ width:8, height:8, borderRadius:"50%", background:CA.green }} />
+          <span style={{ color:CA.green, fontSize:10, fontWeight:700 }}>Système OK</span>
+          <button onClick={()=>setLocked(true)} style={{ background:CA.redDim, border:`1px solid ${CA.red}33`, color:CA.red, borderRadius:7, padding:"4px 10px", fontSize:11, cursor:"pointer", fontFamily:"inherit", marginLeft:4 }}>🔒 Verrouiller</button>
+        </div>
+      </div>
+
+      {/* PAGE */}
+      <div style={{ paddingBottom:72, overflowY:"auto" }}>
+        {page==="overview" && <Overview />}
+        {page==="users" && <UsersSection />}
+        {page==="complaints" && <ComplaintsSection />}
+        {page==="verification" && <VerificationSection />}
+        {page==="updates" && <UpdatesSection />}
+        {page==="analytics" && <AnalyticsSection />}
+      </div>
+
+      {/* BOTTOM NAV */}
+      <div style={{ position:"fixed", bottom:0, left:"50%", transform:"translateX(-50%)", width:"100%", maxWidth:430, background:CA.surface, borderTop:`1px solid ${CA.border}`, display:"flex", padding:"7px 0 13px", zIndex:50, overflowX:"auto" }}>
+        {NAV.map(n=>(
+          <button key={n.id} onClick={()=>setPage(n.id)} style={{ flex:1, background:"none", border:"none", cursor:"pointer", display:"flex", flexDirection:"column", alignItems:"center", gap:2, minWidth:0 }}>
+            <span style={{ fontSize:17, filter:page===n.id?"none":"grayscale(1) opacity(.4)", transition:"all .15s" }}>{n.icon}</span>
+            <span style={{ fontSize:8, color:page===n.id?CA.accent:CA.muted, fontFamily:"inherit", whiteSpace:"nowrap" }}>{n.label}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+    // ── ROOT ROUTER ──
+    function App() {
+      const isAdmin = window.location.search.includes('admin');
+      if (isAdmin) return <AdminPanel />;
+      return <AfriLearnMain />;
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
 </html>
